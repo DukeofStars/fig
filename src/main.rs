@@ -1,5 +1,5 @@
 #![feature(fs_try_exists)]
-use std::{fs, path::PathBuf};
+use std::{cell::RefCell, fs, path::PathBuf, rc::Rc};
 
 use clap::{Args, Parser, Subcommand};
 use fig::{config_folder_path, FigConfig};
@@ -11,16 +11,16 @@ fn main() {
 
     let config_file = fs::read_to_string(&config_path);
 
-    let mut config: FigConfig = match config_file {
+    let config: Rc<RefCell<FigConfig>> = Rc::new(RefCell::new(match config_file {
         Ok(_) => toml::from_str(&config_file.unwrap()).unwrap(),
         Err(_) => FigConfig { configs: vec![] },
-    };
+    }));
 
     use SubCommand::*;
     match cli.cmd {
         Add(add) => {
             fig::add(
-                &mut config,
+                config.clone(),
                 add.path,
                 add.namespace.unwrap_or_default().replace(".", "/").into(),
                 add.verbose,
@@ -28,7 +28,7 @@ fn main() {
         }
         Forget(forget) => {
             fig::remove(
-                &mut config,
+                config.clone(),
                 forget.name,
                 forget.namespace.unwrap_or_default(),
                 !forget.quiet, // Invert quiet so the fig::remove can treat it as a 'verbose' flag.
@@ -36,7 +36,13 @@ fn main() {
         }
     }
 
-    fs::write(config_path, toml::to_string_pretty(&config).unwrap()).unwrap();
+    let config: FigConfig = config.borrow().clone();
+
+    fs::write(
+        config_path,
+        toml::to_string_pretty::<FigConfig>(&config).unwrap(),
+    )
+    .unwrap();
 }
 
 #[derive(Parser)]

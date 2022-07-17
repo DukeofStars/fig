@@ -1,9 +1,9 @@
-use std::{fs, path::PathBuf};
+use std::{cell::RefCell, env, fs, path::PathBuf, rc::Rc};
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FigConfig {
     pub configs: Vec<FigConfigFile>,
 }
@@ -16,15 +16,23 @@ pub struct FigConfigFile {
     pub namespace: String,
 }
 
-pub fn remove(config: &mut FigConfig, name: Option<String>, namespace: String, verbose: bool) {
+pub fn remove(
+    config: Rc<RefCell<FigConfig>>,
+    name: Option<String>,
+    namespace: String,
+    verbose: bool,
+) {
     match name {
         Some(name) => {
             print_if(verbose, &format!("Removing {}", name));
 
-            let mut origin = config
+            let mut config_borrowed = config.borrow_mut();
+            let mut origin = config_borrowed
                 .configs
                 .iter()
                 .filter(|x| x.name == name && x.namespace == namespace);
+
+            // Make sure there is no more and no less than one config that matches the given criteria.
             if origin.clone().count() != 1 {
                 panic!(
                     "There must be EXACTLY one config with the name {} in the namespace {}",
@@ -33,11 +41,46 @@ pub fn remove(config: &mut FigConfig, name: Option<String>, namespace: String, v
             }
             let origin = origin.next().unwrap().clone();
 
+            // Delete the symlink in origin.
+            print_if(
+                verbose,
+                &format!("Deleting symlink {}", origin.origin_path.display()),
+            );
+            fs::remove_file(&origin.origin_path).unwrap();
+
+            // Copy the file to original location.
+            print_if(
+                verbose,
+                &format!(
+                    "Moving file {} back to {}",
+                    origin.path.display(),
+                    origin.origin_path.display()
+                ),
+            );
+            fs::copy(&origin.path, &origin.origin_path).unwrap();
+
             // Delete the config file saved in fig data.
             fs::remove_file(&origin.path).unwrap();
 
             // Remove it from config.
-            config.configs.retain(|x| x.path != origin.path);
+            config_borrowed.configs.retain(|x| x.path != origin.path);
+
+            // Check if there are any more configs in the namespace.
+            if !config_borrowed
+                .configs
+                .iter()
+                .any(|x| x.namespace == namespace)
+            {
+                // Delete namespace
+                let namespace_dir: &str = namespace
+                    .split(".")
+                    .into_iter()
+                    .next()
+                    .expect("There was no namespace.");
+                println!("Deleting namespace {}", namespace_dir);
+                let namespace_dir = data_folder_path().unwrap().join(namespace_dir);
+                fs::remove_dir_all(namespace_dir).unwrap();
+            }
         }
         None => {
             if namespace == "" {
@@ -48,69 +91,96 @@ pub fn remove(config: &mut FigConfig, name: Option<String>, namespace: String, v
                 &format!("Removing all configs in namespace {}", namespace),
             );
 
-            // Convert namespace to path.
-            let namespace_p: PathBuf = namespace.replace(".", "/").into();
-
-            // Delete the config files saved in fig data.
-            fs::remove_dir_all(data_folder_path().unwrap().join(&namespace_p)).expect(&format!(
-                "Failed to delete directory {}",
-                data_folder_path().unwrap().join(&namespace_p).display(),
-            ));
-
-            // Remove it from config.
+            // Iter over all configs in the namespace and delete them all.
             config
+                .borrow()
                 .configs
-                .retain(|x| !x.namespace.starts_with(&namespace));
+                .iter()
+                .filter(|x| x.namespace == namespace)
+                .for_each(|x| {
+                    remove(
+                        config.clone(),
+                        Some(x.name.clone()),
+                        namespace.clone(),
+                        verbose,
+                    );
+                });
+
+            config
+                .borrow_mut()
+                .configs
+                .retain(|x| x.namespace != namespace);
         }
     }
 }
 
-pub fn add(config: &mut FigConfig, path: PathBuf, namespace: PathBuf, verbose: bool) {
+pub fn add(config: Rc<RefCell<FigConfig>>, path: PathBuf, namespace: PathBuf, verbose: bool) {
     print_if(verbose, &format!("Adding {}", path.display()));
 
-    let config_folder_path = data_folder_path().unwrap();
+    let data_folder_path = data_folder_path().unwrap();
 
     let origin_file = &path;
-    let destination_file = &config_folder_path
+    let destination_file = &data_folder_path
         .join(&namespace)
         .join(origin_file.file_name().unwrap());
 
     // Check if a config already exists.
-    if config.configs.iter().any(|x| x.path == *destination_file) {
+    if config
+        .borrow()
+        .configs
+        .iter()
+        .any(|x| x.path == *destination_file)
+    {
         panic!("That config file already exists!");
     }
 
     // Make sure directory exists.
-    fs::create_dir_all(config_folder_path.join(&namespace)).unwrap();
+    fs::create_dir_all(data_folder_path.join(&namespace)).unwrap();
 
-    // Create symbolic link to file in original folder using mklink tool.
-    let _ = std::process::Command::new("cmd")
+    // Copy original file into data_dir.
+    fs::copy(origin_file, destination_file).unwrap();
+
+    // Delete original file.
+    fs::remove_file(origin_file).unwrap();
+
+    // Create symbolic link to destination file at origin file.
+    let exit = std::process::Command::new("cmd")
         .arg("/C") // Command line.
         .arg("mklink") // Create symbolic link.
         //.arg("/D") // Directories only.
-        .arg(destination_file.display().to_string())
         .arg(origin_file.display().to_string())
+        .arg(destination_file.display().to_string())
         .status()
         .expect("Error creating symbolic link.");
+
+    if !exit.success() {
+        println!("Error creating symbolic link. Aborting...");
+
+        // Undo file operations.
+        fs::copy(destination_file, origin_file).unwrap();
+        fs::remove_file(destination_file).unwrap();
+
+        panic!()
+    }
 
     print_if(
         verbose,
         &format!(
             "Created config file in {}\nDone.",
-            &destination_file.display(),
+            destination_file.display(),
         ),
     );
 
     // Everything succeeded. Add the config to the FigConfig
-    config.configs.push(FigConfigFile {
+    config.borrow_mut().configs.push(FigConfigFile {
         name: origin_file
             .file_name()
             .unwrap()
             .to_str()
             .unwrap()
             .to_string(),
-        origin_path: origin_file.to_path_buf().canonicalize().unwrap(),
-        path: destination_file.to_path_buf(),
+        origin_path: env::current_dir().unwrap().join(origin_file),
+        path: destination_file.clone().canonicalize().unwrap(),
         namespace: namespace.to_str().unwrap_or_default().replace("/", "."),
     });
 }
