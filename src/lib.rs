@@ -1,3 +1,5 @@
+#![feature(fs_try_exists)]
+
 use std::{cell::RefCell, env, fs, path::PathBuf, rc::Rc};
 
 use directories::ProjectDirs;
@@ -277,28 +279,20 @@ pub fn list(config: Config) {
     });
 }
 
-pub fn open(config: Config, name: Option<String>, namespace: String) {
-    if name.is_none() {
-        println!("Error, you must specify a name.");
-    }
-
+pub fn open(path: PathBuf) {
     let editor = env::var("EDITOR").unwrap_or_else(|_| "start".to_string());
 
     // Run editor with the config file.
-    let config_file = config
-        .borrow()
-        .configs
-        .iter()
-        .find(|x| {
-            if namespace != "" {
-                x.namespace == namespace && x.name == *name.as_ref().unwrap()
-            } else {
-                x.name == *name.as_ref().unwrap()
-            }
-        })
+    let config_file = data_folder_path()
         .unwrap()
-        .path
-        .clone();
+        .join(path)
+        .canonicalize()
+        .unwrap();
+    let exists = fs::try_exists(&config_file);
+    if exists.is_err() || !exists.unwrap() {
+        panic!("Could not find config file")
+    }
+
     std::process::Command::new(editor)
         .arg(config_file)
         .status()
