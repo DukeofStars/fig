@@ -34,6 +34,9 @@ fn main() {
                 !forget.quiet, // Invert quiet so the fig::remove can treat it as a 'verbose' flag.
             );
         }
+        List => {
+            fig::list(config.clone());
+        }
     }
 
     let config: FigConfig = config.borrow().clone();
@@ -55,6 +58,7 @@ struct Cli {
 enum SubCommand {
     Add(AddArgs),
     Forget(ForgetArgs),
+    List,
 }
 
 #[derive(Args)]

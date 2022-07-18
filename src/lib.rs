@@ -66,10 +66,11 @@ pub fn remove(
             config_borrowed.configs.retain(|x| x.path != origin.path);
 
             // Check if there are any more configs in the namespace.
-            if !config_borrowed
-                .configs
-                .iter()
-                .any(|x| x.namespace == namespace)
+            if namespace != ""
+                && !config_borrowed
+                    .configs
+                    .iter()
+                    .any(|x| x.namespace == namespace)
             {
                 // Delete namespace
                 let namespace_dir: &str = namespace
@@ -148,7 +149,7 @@ pub fn add(config: Rc<RefCell<FigConfig>>, path: PathBuf, namespace: PathBuf, ve
         .arg("/C") // Command line.
         .arg("mklink") // Create symbolic link.
         //.arg("/D") // Directories only.
-        .arg(origin_file.display().to_string())
+        .arg(origin_file.to_str().unwrap().replace("/", "\\"))
         .arg(destination_file.display().to_string())
         .status()
         .expect("Error creating symbolic link.");
@@ -178,8 +179,15 @@ pub fn add(config: Rc<RefCell<FigConfig>>, path: PathBuf, namespace: PathBuf, ve
             .unwrap()
             .to_str()
             .unwrap()
-            .to_string(),
-        origin_path: env::current_dir().unwrap().join(origin_file),
+            .to_string()
+            .replace("/", "\\"),
+        origin_path: env::current_dir()
+            .unwrap()
+            .join(origin_file)
+            .to_str() // Convert it to string so
+            .unwrap()
+            .replace("/", "\\") // we can do this.
+            .into(), // convert back into PathBuf
         path: destination_file.clone().canonicalize().unwrap(),
         namespace: namespace.to_str().unwrap_or_default().replace("/", "."),
     });
@@ -221,4 +229,25 @@ fn print_if(verbose: bool, msg: &str) {
     if verbose {
         println!("{}", msg);
     }
+}
+
+pub fn list(config: Rc<RefCell<FigConfig>>) {
+    println!("Found {} config files", config.borrow().configs.len());
+    config.borrow().configs.sort_by(|a, b| {
+        let a: PathBuf = a.namespace.replace(".", "\\").into().join(a.name);
+        let b: PathBuf = b.namespace.replace(".", "\\").into().join(b.name);
+        a.cmp(&b)
+    });
+    config.borrow().configs.iter().for_each(|x| {
+        if x.namespace != "" {
+            println!(
+                "{}\\{}: {}",
+                x.namespace.replace(".", "\\"),
+                x.name,
+                x.origin_path.display(),
+            )
+        } else {
+            println!("{}: {}", x.name, x.origin_path.display())
+        }
+    });
 }
