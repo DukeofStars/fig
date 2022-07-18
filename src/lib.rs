@@ -259,11 +259,10 @@ pub fn list(config: Config) {
     terminal.reset().unwrap();
     println!(" configs.");
     config.borrow_mut().configs.sort_by(|a, b| {
-        let a: PathBuf =
-            <String as Into<PathBuf>>::into(a.namespace.replace(".", "\\")).join(&a.name);
-        let b: PathBuf =
-            <String as Into<PathBuf>>::into(b.namespace.replace(".", "\\")).join(&b.name);
-        a.cmp(&b)
+        let a_name: PathBuf = PathBuf::from(a.namespace.replace(".", "\\")).join(&a.name);
+        let b_name: PathBuf = PathBuf::from(b.namespace.replace(".", "\\")).join(&b.name);
+
+        a_name.cmp(&b_name)
     });
     config.borrow().configs.iter().for_each(|x| {
         if x.namespace != "" {
