@@ -3,6 +3,8 @@ use std::{cell::RefCell, env, fs, path::PathBuf, rc::Rc};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 
+type Config = Rc<RefCell<FigConfig>>;
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct FigConfig {
     pub configs: Vec<FigConfigFile>,
@@ -16,12 +18,7 @@ pub struct FigConfigFile {
     pub namespace: String,
 }
 
-pub fn remove(
-    config: Rc<RefCell<FigConfig>>,
-    name: Option<String>,
-    namespace: String,
-    verbose: bool,
-) {
+pub fn remove(config: Config, name: Option<String>, namespace: String, verbose: bool) {
     match name {
         Some(name) => {
             print_if(verbose, &format!("Removing {}", name));
@@ -115,7 +112,7 @@ pub fn remove(
     }
 }
 
-pub fn add(config: Rc<RefCell<FigConfig>>, path: PathBuf, namespace: PathBuf, verbose: bool) {
+pub fn add(config: Config, path: PathBuf, namespace: PathBuf, verbose: bool) {
     print_if(verbose, &format!("Adding {}", path.display()));
 
     let data_folder_path = data_folder_path().unwrap();
@@ -231,11 +228,13 @@ fn print_if(verbose: bool, msg: &str) {
     }
 }
 
-pub fn list(config: Rc<RefCell<FigConfig>>) {
+pub fn list(config: Config) {
     println!("Found {} config files", config.borrow().configs.len());
-    config.borrow().configs.sort_by(|a, b| {
-        let a: PathBuf = a.namespace.replace(".", "\\").into().join(a.name);
-        let b: PathBuf = b.namespace.replace(".", "\\").into().join(b.name);
+    config.borrow_mut().configs.sort_by(|a, b| {
+        let a: PathBuf =
+            <String as Into<PathBuf>>::into(a.namespace.replace(".", "\\")).join(&a.name);
+        let b: PathBuf =
+            <String as Into<PathBuf>>::into(b.namespace.replace(".", "\\")).join(&b.name);
         a.cmp(&b)
     });
     config.borrow().configs.iter().for_each(|x| {
@@ -250,4 +249,32 @@ pub fn list(config: Rc<RefCell<FigConfig>>) {
             println!("{}: {}", x.name, x.origin_path.display())
         }
     });
+}
+
+pub fn open(config: Config, name: Option<String>, namespace: String) {
+    if name.is_none() {
+        println!("Error, you must specify a name.");
+    }
+
+    let editor = env::var("EDITOR").unwrap_or_else(|_| "start".to_string());
+
+    // Run editor with the config file.
+    let config_file = config
+        .borrow()
+        .configs
+        .iter()
+        .find(|x| {
+            if namespace != "" {
+                x.namespace == namespace && x.name == *name.as_ref().unwrap()
+            } else {
+                x.name == *name.as_ref().unwrap()
+            }
+        })
+        .unwrap()
+        .path
+        .clone();
+    std::process::Command::new(editor)
+        .arg(config_file)
+        .status()
+        .expect("Error opening config file. Try qualifying the EDITOR variable to a full path.");
 }

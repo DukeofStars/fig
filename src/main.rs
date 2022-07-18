@@ -37,6 +37,13 @@ fn main() {
         List => {
             fig::list(config.clone());
         }
+        Open(open) => {
+            fig::open(
+                config.clone(),
+                open.name,
+                open.namespace.unwrap_or_default(),
+            );
+        }
     }
 
     let config: FigConfig = config.borrow().clone();
@@ -59,6 +66,7 @@ enum SubCommand {
     Add(AddArgs),
     Forget(ForgetArgs),
     List,
+    Open(OpenArgs),
 }
 
 #[derive(Args)]
@@ -75,6 +83,14 @@ struct AddArgs {
 struct ForgetArgs {
     #[clap(short, long)]
     quiet: bool,
+    #[clap(name = "name", parse(from_str))]
+    name: Option<String>,
+    #[clap(short, long)]
+    namespace: Option<String>,
+}
+
+#[derive(Args)]
+struct OpenArgs {
     #[clap(name = "name", parse(from_str))]
     name: Option<String>,
     #[clap(short, long)]
