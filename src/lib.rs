@@ -3,6 +3,9 @@ use std::{cell::RefCell, env, fs, path::PathBuf, rc::Rc};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 
+extern crate term;
+use term::*;
+
 type Config = Rc<RefCell<FigConfig>>;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -21,7 +24,13 @@ pub struct FigConfigFile {
 pub fn remove(config: Config, name: Option<String>, namespace: String, verbose: bool) {
     match name {
         Some(name) => {
-            print_if(verbose, &format!("Removing {}", name));
+            if verbose {
+                let mut terminal = term::stdout().unwrap();
+                print!("Removing ");
+                terminal.attr(Attr::Bold).unwrap();
+                println!("{}", name);
+                terminal.reset().unwrap();
+            }
 
             let mut config_borrowed = config.borrow_mut();
             let mut origin = config_borrowed
@@ -39,10 +48,13 @@ pub fn remove(config: Config, name: Option<String>, namespace: String, verbose: 
             let origin = origin.next().unwrap().clone();
 
             // Delete the symlink in origin.
-            print_if(
-                verbose,
-                &format!("Deleting symlink {}", origin.origin_path.display()),
-            );
+            if verbose {
+                let mut terminal = term::stdout().unwrap();
+                print!("Deleting symlink ");
+                terminal.attr(Attr::Bold).unwrap();
+                println!("{}", origin.origin_path.display());
+                terminal.reset().unwrap();
+            }
             fs::remove_file(&origin.origin_path).unwrap();
 
             // Copy the file to original location.
@@ -75,7 +87,13 @@ pub fn remove(config: Config, name: Option<String>, namespace: String, verbose: 
                     .into_iter()
                     .next()
                     .expect("There was no namespace.");
-                println!("Deleting namespace {}", namespace_dir);
+
+                let mut terminal = term::stdout().unwrap();
+                print!("Deleting namespace ");
+                terminal.attr(Attr::Bold).unwrap();
+                println!("{}", namespace);
+                terminal.reset().unwrap();
+
                 let namespace_dir = data_folder_path().unwrap().join(namespace_dir);
                 fs::remove_dir_all(namespace_dir).unwrap();
             }
@@ -84,10 +102,13 @@ pub fn remove(config: Config, name: Option<String>, namespace: String, verbose: 
             if namespace == "" {
                 panic!("You must specify a namespace or a name when forgetting a config.");
             }
-            print_if(
-                verbose,
-                &format!("Removing all configs in namespace {}", namespace),
-            );
+            if verbose {
+                let mut terminal = term::stdout().unwrap();
+                print!("Removing all configs in namespace ");
+                terminal.attr(Attr::Bold).unwrap();
+                println!("{}", namespace);
+                terminal.reset().unwrap();
+            }
 
             // Iter over all configs in the namespace and delete them all.
             config
@@ -229,7 +250,14 @@ fn print_if(verbose: bool, msg: &str) {
 }
 
 pub fn list(config: Config) {
-    println!("Found {} config files", config.borrow().configs.len());
+    let mut terminal = term::stdout().unwrap();
+
+    print!("Found ");
+    terminal.fg(color::BRIGHT_CYAN).unwrap();
+    terminal.attr(Attr::Bold).unwrap();
+    print!("{}", config.borrow().configs.len());
+    terminal.reset().unwrap();
+    println!(" configs.");
     config.borrow_mut().configs.sort_by(|a, b| {
         let a: PathBuf =
             <String as Into<PathBuf>>::into(a.namespace.replace(".", "\\")).join(&a.name);
@@ -239,15 +267,14 @@ pub fn list(config: Config) {
     });
     config.borrow().configs.iter().for_each(|x| {
         if x.namespace != "" {
-            println!(
-                "{}\\{}: {}",
-                x.namespace.replace(".", "\\"),
-                x.name,
-                x.origin_path.display(),
-            )
-        } else {
-            println!("{}: {}", x.name, x.origin_path.display())
+            terminal.fg(color::RED).unwrap();
+            print!("{}\\", x.namespace.replace(".", "\\"));
         }
+        terminal.fg(color::CYAN).unwrap();
+        terminal.attr(Attr::Bold).unwrap();
+        print!("{}", x.name);
+        terminal.reset().unwrap();
+        println!(": {}", x.origin_path.display(),)
     });
 }
 

@@ -10,3 +10,4 @@ clap = { version = "3.2.12", features = ["derive"] }
 directories = "4.0"
 serde = { version = "1.0", features = ["derive"] }
 toml = { version = "0.5" }
+term = "0.7"
