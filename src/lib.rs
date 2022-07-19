@@ -1,142 +1,138 @@
 #![feature(fs_try_exists)]
 
-use std::{cell::RefCell, env, fs, path::PathBuf, rc::Rc};
-
+use core::panic;
 use directories::ProjectDirs;
-use serde::{Deserialize, Serialize};
-
+use std::{
+    env,
+    fs::{self, DirEntry},
+    path::PathBuf,
+};
 extern crate term;
 use term::*;
 
-type Config = Rc<RefCell<FigConfig>>;
+pub fn remove(path: PathBuf, verbose: bool) {
+    let mut terminal = term::stdout().unwrap();
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct FigConfig {
-    pub configs: Vec<FigConfigFile>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct FigConfigFile {
-    pub name: String,
-    pub origin_path: PathBuf,
-    pub path: PathBuf,
-    pub namespace: String,
-}
-
-pub fn remove(config: Config, name: Option<String>, namespace: String, verbose: bool) {
-    match name {
-        Some(name) => {
-            if verbose {
-                let mut terminal = term::stdout().unwrap();
-                print!("Removing ");
-                terminal.attr(Attr::Bold).unwrap();
-                println!("{}", name);
-                terminal.reset().unwrap();
-            }
-
-            let mut config_borrowed = config.borrow_mut();
-            let mut origin = config_borrowed
-                .configs
-                .iter()
-                .filter(|x| x.name == name && x.namespace == namespace);
-
-            // Make sure there is no more and no less than one config that matches the given criteria.
-            if origin.clone().count() != 1 {
-                panic!(
-                    "There must be EXACTLY one config with the name {} in the namespace {}",
-                    name, namespace
-                );
-            }
-            let origin = origin.next().unwrap().clone();
-
-            // Delete the symlink in origin.
-            if verbose {
-                let mut terminal = term::stdout().unwrap();
-                print!("Deleting symlink ");
-                terminal.attr(Attr::Bold).unwrap();
-                println!("{}", origin.origin_path.display());
-                terminal.reset().unwrap();
-            }
-            fs::remove_file(&origin.origin_path).unwrap();
-
-            // Copy the file to original location.
-            print_if(
-                verbose,
-                &format!(
-                    "Moving file {} back to {}",
-                    origin.path.display(),
-                    origin.origin_path.display()
-                ),
-            );
-            fs::copy(&origin.path, &origin.origin_path).unwrap();
-
-            // Delete the config file saved in fig data.
-            fs::remove_file(&origin.path).unwrap();
-
-            // Remove it from config.
-            config_borrowed.configs.retain(|x| x.path != origin.path);
-
-            // Check if there are any more configs in the namespace.
-            if namespace != ""
-                && !config_borrowed
-                    .configs
-                    .iter()
-                    .any(|x| x.namespace == namespace)
-            {
-                // Delete namespace
-                let namespace_dir: &str = namespace
-                    .split(".")
-                    .into_iter()
-                    .next()
-                    .expect("There was no namespace.");
-
-                let mut terminal = term::stdout().unwrap();
-                print!("Deleting namespace ");
-                terminal.attr(Attr::Bold).unwrap();
-                println!("{}", namespace);
-                terminal.reset().unwrap();
-
-                let namespace_dir = data_folder_path().unwrap().join(namespace_dir);
-                fs::remove_dir_all(namespace_dir).unwrap();
-            }
+    let target: PathBuf = data_folder_path()
+        .unwrap()
+        .join(&path)
+        .to_str()
+        .unwrap()
+        .replace("\\\\?\\", "")
+        .into();
+    if target.is_dir() {
+        if verbose {
+            print!("Removing namespace ");
+            terminal.attr(Attr::Bold).unwrap();
+            println!("{}", path.to_str().unwrap().replace("\\", "."));
+            terminal.reset().unwrap();
         }
-        None => {
-            if namespace == "" {
-                panic!("You must specify a namespace or a name when forgetting a config.");
-            }
-            if verbose {
-                let mut terminal = term::stdout().unwrap();
-                print!("Removing all configs in namespace ");
-                terminal.attr(Attr::Bold).unwrap();
-                println!("{}", namespace);
-                terminal.reset().unwrap();
-            }
 
-            // Iter over all configs in the namespace and delete them all.
-            config
-                .borrow()
-                .configs
-                .iter()
-                .filter(|x| x.namespace == namespace)
-                .for_each(|x| {
-                    remove(
-                        config.clone(),
-                        Some(x.name.clone()),
-                        namespace.clone(),
-                        verbose,
-                    );
-                });
+        // Delete the dir.
+        let status = fs::remove_dir_all(&target);
+        if status.is_err() {
+            panic!(
+                "Failed to remove namespace {}",
+                path.to_str().unwrap().replace("\\", ".")
+            )
+        }
+    } else {
+        if verbose {
+            print!("Removing ");
+            terminal.attr(Attr::Bold).unwrap();
+            println!("{}", path.display());
+            terminal.reset().unwrap();
+        }
 
-            config
-                .borrow_mut()
-                .configs
-                .retain(|x| x.namespace != namespace);
+        // Delete the file.
+        let status = fs::remove_file(&target);
+        if status.is_err() {
+            panic!("Failed to remove config file {}", target.display());
         }
     }
+
+    terminal.fg(color::GREEN).unwrap();
+    println!("Done");
+    terminal.reset().unwrap();
+
+    // let mut config_borrowed = config.borrow_mut();
+    // let mut origin = config_borrowed
+    //     .configs
+    //     .iter()
+    //     .filter(|x| x.name == name && x.namespace == namespace);
+
+    // // Make sure there is no more and no less than one config that matches the given criteria.
+    // if origin.clone().count() != 1 {
+    //     panic!(
+    //         "There must be EXACTLY one config with the name {} in the namespace {}",
+    //         name, namespace
+    //     );
+    // }
+    // let origin = origin.next().unwrap().clone();
+
+    // // Delete the symlink in origin.
+    // if verbose {
+    //     let mut terminal = term::stdout().unwrap();
+    //     print!("Deleting symlink ");
+    //     terminal.attr(Attr::Bold).unwrap();
+    //     println!("{}", origin.origin_path.display());
+    //     terminal.reset().unwrap();
+    // }
+    // fs::remove_file(&origin.origin_path).unwrap();
+
+    // // Copy the file to original location.
+    // print_if(
+    //     verbose,
+    //     &format!(
+    //         "Moving file {} back to {}",
+    //         origin.path.display(),
+    //         origin.origin_path.display()
+    //     ),
+    // );
+    // fs::copy(&origin.path, &origin.origin_path).unwrap();
+
+    // // Delete the config file saved in fig data.
+    // fs::remove_file(&origin.path).unwrap();
+
+    // // Remove it from config.
+    // config_borrowed.configs.retain(|x| x.path != origin.path);
+
+    // // Check if there are any more configs in the namespace.
+    // if namespace != ""
+    //     && !config_borrowed
+    //         .configs
+    //         .iter()
+    //         .any(|x| x.namespace == namespace)
+    // {
+    //     // Delete namespace
+    //     let namespace_dir: &str = namespace
+    //         .split(".")
+    //         .into_iter()
+    //         .next()
+    //         .expect("There was no namespace.");
+
+    //     let mut terminal = term::stdout().unwrap();
+    //     print!("Deleting namespace ");
+    //     terminal.attr(Attr::Bold).unwrap();
+    //     println!("{}", namespace);
+    //     terminal.reset().unwrap();
+
+    //     let namespace_dir = data_folder_path().unwrap().join(namespace_dir);
+    //     fs::remove_dir_all(namespace_dir).unwrap();
+    // }
 }
 
-pub fn add(config: Config, path: PathBuf, namespace: PathBuf, verbose: bool) {
-    print_if(verbose, &format!("Adding {}", path.display()));
+pub fn add(path: PathBuf, namespace: PathBuf, verbose: bool) {
+    // print_if(verbose, &format!("Adding {}", path.display()));
+
+    let mut terminal = term::stdout().unwrap();
+
+    if verbose {
+        print!("Adding ");
+        terminal.attr(Attr::Bold).unwrap();
+        println!("{}", path.display());
+        terminal.reset().unwrap();
+    }
 
     let data_folder_path = data_folder_path().unwrap();
 
@@ -146,71 +142,76 @@ pub fn add(config: Config, path: PathBuf, namespace: PathBuf, verbose: bool) {
         .join(origin_file.file_name().unwrap());
 
     // Check if a config already exists.
-    if config
-        .borrow()
-        .configs
-        .iter()
-        .any(|x| x.path == *destination_file)
-    {
-        panic!("That config file already exists!");
+    if exists(destination_file) {
+        panic!("That config already exists");
     }
 
     // Make sure directory exists.
     fs::create_dir_all(data_folder_path.join(&namespace)).unwrap();
 
+    // Create hard link to target.
+    fs::hard_link(origin_file, destination_file).unwrap();
+    // std::process::Command::new("cmd")
+    //     .arg("/C")
+    //     .arg("mklink")
+    //     .arg(destination_file.to_str().unwrap())
+    //     .arg(origin_file.to_str().unwrap().replace("/", "\\"))
+    //     .status()
+    //     .expect("Failed to create link");
+
     // Copy original file into data_dir.
-    fs::copy(origin_file, destination_file).unwrap();
+    // fs::copy(origin_file, destination_file).unwrap();
 
-    // Delete original file.
-    fs::remove_file(origin_file).unwrap();
+    // // Delete original file.
+    // fs::remove_file(origin_file).unwrap();
 
-    // Create symbolic link to destination file at origin file.
-    let exit = std::process::Command::new("cmd")
-        .arg("/C") // Command line.
-        .arg("mklink") // Create symbolic link.
-        //.arg("/D") // Directories only.
-        .arg(origin_file.to_str().unwrap().replace("/", "\\"))
-        .arg(destination_file.display().to_string())
-        .status()
-        .expect("Error creating symbolic link.");
+    // // Create symbolic link to destination file at origin file.
+    // let exit = std::process::Command::new("cmd")
+    //     .arg("/C") // Command line.
+    //     .arg("mklink") // Create symbolic link.
+    //     //.arg("/D") // Directories only.
+    //     .arg(origin_file.to_str().unwrap().replace("/", "\\"))
+    //     .arg(destination_file.display().to_string())
+    //     .status()
+    //     .expect("Error creating symbolic link.");
 
-    if !exit.success() {
-        println!("Error creating symbolic link. Aborting...");
+    // if !exit.success() {
+    //     println!("Error creating symbolic link. Aborting...");
 
-        // Undo file operations.
-        fs::copy(destination_file, origin_file).unwrap();
-        fs::remove_file(destination_file).unwrap();
+    //     // Undo file operations.
+    //     fs::copy(destination_file, origin_file).unwrap();
+    //     fs::remove_file(destination_file).unwrap();
 
-        panic!()
-    }
+    //     panic!()
+    // }
 
-    print_if(
-        verbose,
-        &format!(
-            "Created config file in {}\nDone.",
-            destination_file.display(),
-        ),
-    );
+    // // print_if(
+    // //     verbose,
+    // //     &format!(
+    // //         "Created config file in {}\nDone.",
+    // //         destination_file.display(),
+    // //     ),
+    // // );
+    // if verbose {
+    //     print!("Created config file in ");
+    //     terminal.attr(Attr::Bold);
+    //     println!("{}", destination_file.display());
+    //     terminal.reset();
 
-    // Everything succeeded. Add the config to the FigConfig
-    config.borrow_mut().configs.push(FigConfigFile {
-        name: origin_file
-            .file_name()
-            .unwrap()
-            .to_str()
-            .unwrap()
-            .to_string()
-            .replace("/", "\\"),
-        origin_path: env::current_dir()
-            .unwrap()
-            .join(origin_file)
-            .to_str() // Convert it to string so
-            .unwrap()
-            .replace("/", "\\") // we can do this.
-            .into(), // convert back into PathBuf
-        path: destination_file.clone().canonicalize().unwrap(),
-        namespace: namespace.to_str().unwrap_or_default().replace("/", "."),
-    });
+    //     println!("Done.");
+    // }
+
+    // // Everything succeeded. Add the config to the FigConfig
+    // config.borrow_mut().configs.push(FigConfigFile {
+    //     origin_path: env::current_dir()
+    //         .unwrap()
+    //         .join(origin_file)
+    //         .to_str() // Convert it to string so
+    //         .unwrap()
+    //         .replace("/", "\\") // we can do this.
+    //         .into(), // convert back into PathBuf
+    //     path: pathdiff::diff_paths(destination_file, data_folder_path).unwrap(),
+    // });
 }
 
 pub fn data_folder_path() -> Option<PathBuf> {
@@ -245,38 +246,36 @@ pub fn config_folder_path() -> Option<PathBuf> {
     }
 }
 
-fn print_if(verbose: bool, msg: &str) {
-    if verbose {
-        println!("{}", msg);
+pub fn list() {
+    let data_folder_path = data_folder_path().unwrap();
+
+    let entries = fs::read_dir(&data_folder_path).unwrap();
+
+    for entry in entries {
+        list_dir(entry.unwrap(), &data_folder_path);
     }
 }
 
-pub fn list(config: Config) {
-    let mut terminal = term::stdout().unwrap();
-
-    print!("Found ");
-    terminal.fg(color::BRIGHT_CYAN).unwrap();
-    terminal.attr(Attr::Bold).unwrap();
-    print!("{}", config.borrow().configs.len());
-    terminal.reset().unwrap();
-    println!(" configs.");
-    config.borrow_mut().configs.sort_by(|a, b| {
-        let a_name: PathBuf = PathBuf::from(a.namespace.replace(".", "\\")).join(&a.name);
-        let b_name: PathBuf = PathBuf::from(b.namespace.replace(".", "\\")).join(&b.name);
-
-        a_name.cmp(&b_name)
-    });
-    config.borrow().configs.iter().for_each(|x| {
-        if x.namespace != "" {
-            terminal.fg(color::RED).unwrap();
-            print!("{}\\", x.namespace.replace(".", "\\"));
+fn list_dir(dir: DirEntry, data_folder_path: &PathBuf) {
+    if dir.path().is_file() {
+        let namespace_path = pathdiff::diff_paths(dir.path(), data_folder_path).unwrap();
+        let file_name = namespace_path.file_name().unwrap().to_str().unwrap();
+        let mut namespace_path = namespace_path.parent().unwrap().display().to_string();
+        if namespace_path != "" {
+            namespace_path.push('\\');
         }
-        terminal.fg(color::CYAN).unwrap();
+        let mut terminal = term::stdout().unwrap();
+        terminal.fg(color::RED).unwrap();
+        print!("{namespace_path}");
+        terminal.fg(color::BRIGHT_GREEN).unwrap();
         terminal.attr(Attr::Bold).unwrap();
-        print!("{}", x.name);
+        println!("{file_name}");
         terminal.reset().unwrap();
-        println!(": {}", x.origin_path.display(),)
-    });
+    } else {
+        for entry in fs::read_dir(dir.path()).unwrap() {
+            list_dir(entry.unwrap(), data_folder_path);
+        }
+    }
 }
 
 pub fn open(path: PathBuf) {
@@ -287,14 +286,23 @@ pub fn open(path: PathBuf) {
         .unwrap()
         .join(path)
         .canonicalize()
-        .unwrap();
-    let exists = fs::try_exists(&config_file);
-    if exists.is_err() || !exists.unwrap() {
-        panic!("Could not find config file")
-    }
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .replace("\\\\?\\", "");
 
     std::process::Command::new(editor)
         .arg(config_file)
         .status()
         .expect("Error opening config file. Try qualifying the EDITOR variable to a full path.");
+}
+
+pub fn exists(file: &PathBuf) -> bool {
+    let exists = fs::try_exists(file);
+    exists.unwrap()
+}
+
+pub fn dir_exists(dir: &PathBuf) -> bool {
+    let exists = fs::read_dir(dir);
+    exists.is_ok()
 }
