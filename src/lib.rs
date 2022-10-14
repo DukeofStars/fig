@@ -231,7 +231,7 @@ pub fn data_folder_path() -> Option<PathBuf> {
 }
 
 pub fn config_folder_path() -> Option<PathBuf> {
-    if let Some(proj_dirs) = ProjectDirs::from("me", "dukeofstars", "fig") {
+    if let Some(proj_dirs) = ProjectDirs::from("", "", "fig") {
         let dir = proj_dirs.config_dir().to_path_buf();
         let result = dir.canonicalize();
         if result.is_err() {
