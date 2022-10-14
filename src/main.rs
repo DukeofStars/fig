@@ -97,7 +97,6 @@ enum SubCommand {
 struct AddArgs {
     #[clap(short, long)]
     verbose: bool,
-    #[clap(parse(from_os_str))]
     path: PathBuf,
     #[clap(short, long)]
     namespace: Option<String>,
@@ -107,7 +106,7 @@ struct AddArgs {
 struct ForgetArgs {
     #[clap(short, long)]
     quiet: bool,
-    #[clap(name = "name", parse(from_str))]
+    #[clap(name = "name")]
     path: Option<String>,
     #[clap(short, long)]
     namespace: Option<String>,
@@ -115,7 +114,7 @@ struct ForgetArgs {
 
 #[derive(Args, Debug)]
 struct OpenArgs {
-    #[clap(name = "name", parse(from_os_str))]
+    #[clap(name = "name")]
     path: PathBuf,
     #[clap(short, long)]
     namespace: Option<String>,
