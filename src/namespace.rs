@@ -15,11 +15,10 @@ pub enum Error {
 
 pub fn strip_namespace(path: impl AsRef<Path>, file: impl AsRef<Path>) -> Option<PathBuf> {
     let path = path.as_ref().to_str()?;
-    dbg!(&path);
     let file = file.as_ref().to_str()?.replace("\\\\?\\", "");
-    dbg!(&file);
+    let path = PathBuf::from(file.strip_prefix(path)?.trim_start_matches("\\"));
 
-    Some(PathBuf::from(file.strip_prefix(path)?))
+    Some(path)
 }
 
 pub fn determine_namespace(repository: &Repository, path: &PathBuf) -> Result<(String, PathBuf)> {

@@ -26,13 +26,12 @@ pub fn add(repository: &Repository, options: AddOptions) -> Result<()> {
 
     let (name, path) = determine_namespace(repository, &repo_dir)?;
 
-    dbg!(&name, &path, &repo_dir, &file);
-
     let namespace_path = repo_dir.join(&name);
-    dbg!(&namespace_path);
     let new_path = namespace_path.join(strip_namespace(path, &file).ok_or(PathConversionFail)?);
+    if let Some(parent) = new_path.parent() {
+        fs::create_dir_all(namespace_path.join(parent)).map_err(IoError)?;
+    }
 
-    dbg!(&new_path);
     fs::copy(&file, &namespace_path.join(new_path)).map_err(IoError)?;
 
     Ok(())
