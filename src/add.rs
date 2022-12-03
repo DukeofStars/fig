@@ -17,6 +17,8 @@ pub enum Error {}
 #[derive(Args, Debug)]
 pub struct AddOptions {
     file: PathBuf,
+    #[clap(long)]
+    mock: bool,
 }
 
 pub fn add(repository: &Repository, options: AddOptions) -> Result<()> {
@@ -31,8 +33,14 @@ pub fn add(repository: &Repository, options: AddOptions) -> Result<()> {
     if let Some(parent) = new_path.parent() {
         fs::create_dir_all(namespace_path.join(parent)).map_err(IoError)?;
     }
-
-    fs::copy(&file, &namespace_path.join(new_path)).map_err(IoError)?;
-
+    
+    let output_path = &namespace_path.join(new_path);
+    if options.mock {
+        println!("{}", output_path.display())
+    }
+    else {
+        fs::copy(&file, &output_path).map_err(IoError)?;
+    }
+    
     Ok(())
 }
