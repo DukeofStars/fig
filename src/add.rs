@@ -6,12 +6,7 @@ use miette::Diagnostic;
 use miette::Result;
 use thiserror::Error;
 
-use crate::ManyError;
-use crate::{
-    namespace::{determine_namespace, strip_namespace},
-    repository::Repository,
-    Error::*,
-};
+use crate::{determine_namespace, repository::Repository, strip_namespace, Error::*, ManyError};
 use Error::*;
 
 #[derive(Error, Diagnostic, Debug)]

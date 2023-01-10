@@ -1,7 +1,7 @@
 use clap::Args;
 use miette::Result;
 
-use crate::{namespace::strip_namespace, repository::Repository};
+use crate::{repository::Repository, strip_namespace};
 
 #[derive(Args)]
 pub struct ListOptions {}
