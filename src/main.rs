@@ -3,6 +3,7 @@ use miette::Result;
 
 use fig::{
     add::{self, AddOptions},
+    cmd::{self, CmdOptions},
     deploy::{self, DeployOptions},
     list::{self, ListOptions},
     purge::{self},
@@ -32,6 +33,11 @@ fn main() -> Result<()> {
             let repository = Repository::open()?;
             list::list(&repository, options)?;
         }
+        // Shell
+        Command::Cmd(options) => {
+            let repository = Repository::open()?;
+            cmd::cmd(&repository, options)?;
+        }
     }
 
     Ok(())
@@ -52,10 +58,13 @@ enum Command {
     /// Deploy your fig repository to the rest of your system.
     Deploy(DeployOptions),
     /// Completely delete repository folder.
-    /// USE AT YOUR OWN RISK.
+    ///
     /// If this fails, you could corrupt your fig repository (local).
     /// Your deployed files will not be affected by this operation.
     Purge,
     /// List files in fig repository
     List(ListOptions),
+    /// Run command in repository directory
+    #[clap(alias = "sh", alias = "shell")]
+    Cmd(CmdOptions),
 }

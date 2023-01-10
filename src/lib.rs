@@ -6,6 +6,7 @@ use repository::Repository;
 use thiserror::Error;
 
 pub mod add;
+pub mod cmd;
 pub mod deploy;
 pub mod list;
 pub mod purge;
