@@ -31,6 +31,9 @@ pub struct RepositoryInitOptions {
 }
 
 impl Repository {
+    /// Returns list of namespaces and the paths they point to.
+    ///
+    /// **Note:** path does not point to the directory the namespace is in, but instead where it should be deployed
     pub fn namespaces(&self) -> Result<BTreeMap<String, PathBuf>> {
         let mut out = BTreeMap::new();
         for entry in Repository::dir()?.read_dir().map_err(IoError)? {

@@ -4,6 +4,7 @@ use miette::Result;
 use fig::{
     add::{self, AddOptions},
     deploy::{self, DeployOptions},
+    list::{self, ListOptions},
     purge::{self},
     repository::{Repository, RepositoryInitOptions},
 };
@@ -26,6 +27,10 @@ fn main() -> Result<()> {
         Command::Purge => {
             let repository = Repository::open()?;
             purge::purge(&repository)?;
+        }
+        Command::List(options) => {
+            let repository = Repository::open()?;
+            list::list(&repository, options)?;
         }
     }
 
@@ -51,4 +56,6 @@ enum Command {
     /// If this fails, you could corrupt your fig repository (local).
     /// Your deployed files will not be affected by this operation.
     Purge,
+    /// List files in fig repository
+    List(ListOptions),
 }

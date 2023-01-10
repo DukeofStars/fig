@@ -4,6 +4,7 @@ use thiserror::Error;
 
 pub mod add;
 pub mod deploy;
+pub mod list;
 pub mod namespace;
 pub mod purge;
 pub mod repository;
