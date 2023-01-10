@@ -4,7 +4,7 @@ use miette::{bail, Diagnostic, Result};
 use thiserror::Error;
 
 use self::Error::*;
-use crate::{template, Error::*};
+use crate::{template, Error::*, ManyError};
 
 #[derive(Error, Diagnostic, Debug)]
 pub enum Error {
@@ -15,10 +15,13 @@ pub enum Error {
     #[diagnostic(code(fig::repository::not_initialised))]
     #[help("Try `fig init` to intialise")]
     NotInitialised,
+    #[error(transparent)]
+    SuperError(#[from] super::Error),
 }
 
 pub struct Repository {
     git_repository: git2::Repository,
+    pub dir: PathBuf,
 }
 
 #[derive(clap::Args)]
@@ -57,35 +60,47 @@ impl Repository {
 
     /// Create a repository
     pub fn init(options: RepositoryInitOptions) -> Result<Self> {
-        let project_dir = Repository::dir()?;
+        let dir = Repository::dir()?;
 
-        if project_dir.exists() && !options.force {
+        if dir.exists() && !options.force {
             bail!(AlreadyInitialised)
         }
 
-        fs::create_dir_all(&project_dir).map_err(IoError)?;
+        fs::create_dir_all(&dir).map_err(IoError)?;
 
-        template::generate(&project_dir)?;
+        template::generate(&dir)?;
 
         let dot_gitignore = "";
-        fs::write(project_dir.join(".gitignore"), dot_gitignore).map_err(IoError)?;
+        fs::write(dir.join(".gitignore"), dot_gitignore).map_err(IoError)?;
 
         // Initialise git
-        let repository = git2::Repository::init(&project_dir).map_err(GitError)?;
+        let repository = git2::Repository::init(&dir).map_err(GitError)?;
 
         Ok(Self {
             git_repository: repository,
+            dir,
         })
     }
 
     /// Open already existing repository
     pub fn open() -> Result<Self> {
         let project_dirs = crate::project_dirs()?;
-        let project_dir = project_dirs.data_dir();
-        let repository = git2::Repository::open(project_dir).map_err(GitError)?;
-        Ok(Self {
-            git_repository: repository,
-        })
+        let mut many_error = ManyError::new();
+        let dir = project_dirs.data_dir();
+        if !dir.exists() {
+            many_error.add(NotInitialised);
+        }
+        let repository = git2::Repository::open(dir).map_err(GitError);
+        if let Ok(repository) = repository {
+            return Ok(Self {
+                git_repository: repository,
+                dir: dir.to_path_buf(),
+            });
+        } else if let Err(e) = repository {
+            many_error.add(SuperError(e));
+            many_error.to_result()?;
+        }
+        unreachable!()
     }
 
     pub fn push(&self) -> Result<()> {

@@ -1,10 +1,10 @@
 use std::path::{Path, PathBuf};
 
-use miette::{Diagnostic, Result, bail};
+use miette::{bail, Diagnostic, Result};
 use thiserror::Error;
 
 use self::Error::*;
-use crate::repository::Repository;
+use crate::{repository::Repository, Error::*};
 
 #[derive(Error, Diagnostic, Debug)]
 pub enum Error {
@@ -21,10 +21,17 @@ pub fn strip_namespace(path: impl AsRef<Path>, file: impl AsRef<Path>) -> Option
     Some(path)
 }
 
-pub fn determine_namespace(repository: &Repository, path: &PathBuf) -> Result<(String, PathBuf)> {
-    let mut path = path.as_path();
-    while let Some(parent) = path.parent() {
-        path = parent;
+pub fn determine_namespace(
+    repository: &Repository,
+    path: impl Into<PathBuf>,
+) -> Result<(String, PathBuf)> {
+    let mut path = path.into();
+    while let Some(parent) = path.clone().parent() {
+        path = parent
+            .to_str()
+            .ok_or(PathConversionFail)?
+            .trim_start_matches("\\\\?\\")
+            .into();
         for (name, path_to_check) in repository.namespaces()? {
             if path_to_check == parent {
                 return Ok((name, path_to_check));

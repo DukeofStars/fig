@@ -3,6 +3,8 @@ use miette::Result;
 
 use fig::{
     add::{self, AddOptions},
+    deploy::{self, DeployOptions},
+    purge::{self},
     repository::{Repository, RepositoryInitOptions},
 };
 
@@ -17,6 +19,14 @@ fn main() -> Result<()> {
             let repository = Repository::open()?;
             add::add(&repository, options)?;
         }
+        Command::Deploy(options) => {
+            let repository = Repository::open()?;
+            deploy::deploy(&repository, options)?;
+        }
+        Command::Purge => {
+            let repository = Repository::open()?;
+            purge::purge(&repository)?;
+        }
     }
 
     Ok(())
@@ -30,6 +40,15 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Command {
+    /// Initialise fig, if not already initialised.
     Init(RepositoryInitOptions),
+    /// Add file/s to fig repository (local).
     Add(AddOptions),
+    /// Deploy your fig repository to the rest of your system.
+    Deploy(DeployOptions),
+    /// Completely delete repository folder.
+    /// USE AT YOUR OWN RISK.
+    /// If this fails, you could corrupt your fig repository (local).
+    /// Your deployed files will not be affected by this operation.
+    Purge,
 }
