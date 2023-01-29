@@ -6,6 +6,7 @@ use fig::{
     cmd::{self, CmdOptions},
     deploy::{self, DeployOptions},
     list::{self, ListOptions},
+    namespace::{self, NamespaceOptions},
     purge::{self},
     repository::{Repository, RepositoryInitOptions},
 };
@@ -33,10 +34,13 @@ fn main() -> Result<()> {
             let repository = Repository::open()?;
             list::list(&repository, options)?;
         }
-        // Shell
         Command::Cmd(options) => {
             let repository = Repository::open()?;
             cmd::cmd(&repository, options)?;
+        }
+        Command::Namespace(options) => {
+            let repository = Repository::open()?;
+            namespace::namespace_cli(&repository, options)?;
         }
     }
 
@@ -67,4 +71,7 @@ enum Command {
     /// Run command in repository directory
     #[clap(alias = "sh", alias = "shell")]
     Cmd(CmdOptions),
+    /// Configure namespaces
+    #[clap(alias = "ns")]
+    Namespace(NamespaceOptions),
 }
