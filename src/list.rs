@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use clap::Args;
-use miette::Result;
+use miette::{IntoDiagnostic, Result};
 
 use crate::{repository::Repository, strip_namespace};
 
@@ -17,28 +17,36 @@ pub fn list(repository: &Repository, options: ListOptions) -> Result<()> {
         if options.tree {
             println!("{}: {}", name, path.display());
         }
-        recurse_dir(&options, &dir);
+        recurse_dir(&options, &path, &dir).into_diagnostic()?;
     }
 
     Ok(())
 }
 
-fn recurse_dir(options: &ListOptions, path: impl AsRef<Path>) {
-    let path = path.as_ref();
-    let entries = path.read_dir().expect("Failed to read directory");
-    for entry in entries {
-        let entry = entry.expect("Invalid entry");
-        // Don't include namespace files
-        if entry.path().file_name().unwrap() != "namespace.fig" && entry.path().is_file() {
-            let display_path =
-                strip_namespace(&path, entry.path()).expect("Failed to strip namespace");
-            println!(
-                "{}{}",
-                if options.tree { "\t" } else { "" },
-                path.join(display_path).display()
-            );
-        } else if entry.path().is_dir() {
-            recurse_dir(options, entry.path());
+/// Recurse a directory an print its contents, at their target locations
+fn recurse_dir(
+    options: &ListOptions,
+    target_path: impl AsRef<Path>,
+    root: impl AsRef<Path>,
+) -> Result<(), std::io::Error> {
+    let target_path = target_path.as_ref();
+    let root = root.as_ref();
+
+    for entry in root.read_dir()? {
+        let entry = entry?;
+        if entry.path().is_file() {
+            if entry.path().file_name().unwrap() != "namespace.fig" {
+                let display_path = target_path.join(strip_namespace(root, entry.path()).unwrap());
+                println!(
+                    "{}{path}",
+                    if options.tree { "\t" } else { "" },
+                    path = display_path.display()
+                );
+            }
+        } else {
+            recurse_dir(options, target_path.join(entry.file_name()), entry.path())?;
         }
     }
+
+    Ok(())
 }
