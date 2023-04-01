@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use clap::Args;
 use miette::{IntoDiagnostic, Result};
@@ -12,20 +12,45 @@ pub struct ListOptions {
 }
 
 pub fn list(repository: &Repository, options: ListOptions) -> Result<()> {
-    for (name, path) in repository.namespaces()? {
-        let dir = repository.dir.join(&name);
+    let namespaces = repository.namespaces()?;
+    for (namespace, files) in get_all_files(repository)? {
         if options.tree {
-            println!("{}: {}", name, path.display());
+            println!(
+                "{namespace:12}: {path}",
+                path = namespaces.get(&namespace).unwrap().display()
+            );
         }
-        recurse_dir(&options, &path, &dir).into_diagnostic()?;
+        for file in files {
+            println!(
+                "{}{path}",
+                if options.tree {
+                    " ".repeat(12)
+                } else {
+                    "".to_string()
+                },
+                path = file.display()
+            );
+        }
     }
 
     Ok(())
 }
 
+pub fn get_all_files(repository: &Repository) -> Result<Vec<(String, Vec<PathBuf>)>> {
+    let mut files = vec![];
+    for (name, path) in repository.namespaces()? {
+        let dir = repository.dir.join(&name);
+        let mut ns_files = vec![];
+        recurse_dir(&mut ns_files, &path, &dir).into_diagnostic()?;
+        files.push((name, ns_files));
+    }
+
+    Ok(files)
+}
+
 /// Recurse a directory an print its contents, at their target locations
 fn recurse_dir(
-    options: &ListOptions,
+    files: &mut Vec<PathBuf>,
     target_path: impl AsRef<Path>,
     root: impl AsRef<Path>,
 ) -> Result<(), std::io::Error> {
@@ -37,14 +62,10 @@ fn recurse_dir(
         if entry.path().is_file() {
             if entry.path().file_name().unwrap() != "namespace.fig" {
                 let display_path = target_path.join(strip_namespace(root, entry.path()).unwrap());
-                println!(
-                    "{}{path}",
-                    if options.tree { "\t" } else { "" },
-                    path = display_path.display()
-                );
+                files.push(display_path);
             }
         } else {
-            recurse_dir(options, target_path.join(entry.file_name()), entry.path())?;
+            recurse_dir(files, target_path.join(entry.file_name()), entry.path())?;
         }
     }
 
