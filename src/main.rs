@@ -7,7 +7,7 @@ use fig::{
     deploy::{self, DeployOptions},
     list::{self, ListOptions},
     namespace::{self, NamespaceOptions},
-    purge::{self},
+    purge,
     repository::{Repository, RepositoryInitOptions},
 };
 

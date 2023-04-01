@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 use miette::{IntoDiagnostic, Result};
+use owo_colors::OwoColorize;
 
 use crate::{repository::Repository, strip_namespace};
 
@@ -17,7 +18,8 @@ pub fn list(repository: &Repository, options: ListOptions) -> Result<()> {
         if options.tree {
             println!(
                 "{namespace:12}: {path}",
-                path = namespaces.get(&namespace).unwrap().display()
+                namespace = namespace.blue(),
+                path = namespaces.get(&namespace).unwrap().display().bright_blue()
             );
         }
         for file in files {
@@ -28,7 +30,7 @@ pub fn list(repository: &Repository, options: ListOptions) -> Result<()> {
                 } else {
                     "".to_string()
                 },
-                path = file.display()
+                path = file.display().green()
             );
         }
     }
