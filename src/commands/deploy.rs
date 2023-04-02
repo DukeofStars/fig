@@ -1,26 +1,14 @@
-use std::{
-    fs,
-    path::{self, PathBuf},
-};
+use std::{fs, path::PathBuf};
 
 use clap::Args;
-use miette::{Diagnostic, Result};
-use thiserror::Error;
+use miette::Result;
 
 use fig::{repository::Repository, Error::*};
-use Error::*;
 
 #[derive(Args)]
 pub struct DeployOptions {
     #[clap(short, long)]
     verbose: bool,
-}
-
-#[derive(Debug, Diagnostic, Error)]
-pub enum Error {
-    #[error(transparent)]
-    #[diagnostic(code(fig::deploy::strip_prefix_error))]
-    StripPrefixError(#[from] path::StripPrefixError),
 }
 
 pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
@@ -32,15 +20,40 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
         let mut files = vec![];
         get_files(&dir, &namespace_dir, &mut files, 10)?;
         for file in files {
-            let file = file.strip_prefix("\\").map_err(StripPrefixError)?;
+            let file = file
+                .to_str()
+                .unwrap()
+                .trim_start_matches("\\")
+                .trim_start_matches("/");
 
-            let path = file.strip_prefix(name).map_err(StripPrefixError)?;
+            let path = file
+                .strip_prefix(name)
+                .ok_or_else(|| {
+                    println!("ERROR_LOG, try running with --verbose for more info");
+                    dbg!(&namespace_dir, &namespace_path, &file);
+                })
+                .expect("Failed to strip prefix")
+                .trim_start_matches("/");
+
             let dest = namespace_path.join(&path);
             let src = namespace_dir.join(&path);
+
+            // Make sure dest directory exists
+            if let Some(parent) = dest.parent() {
+                if options.verbose {
+                    println!("Creating directory: {parent}", parent = parent.display());
+                }
+                fs::create_dir_all(&parent).map_err(IoError)?;
+            }
+
             if options.verbose {
                 println!("{} -> {}", src.display(), dest.display())
             }
-            fs::copy(&src, &dest).map_err(IoError)?;
+            fs::copy(&src, &dest).map_err(IoError).map_err(|e| {
+                println!("ERROR_LOG, try running with --verbose for more info");
+                dbg!(&namespace_dir, &namespace_path, &path);
+                e
+            })?;
         }
     }
 
