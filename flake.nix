@@ -1,15 +1,26 @@
 {
   inputs = {
+    naersk.url = "github:nix-community/naersk/master";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    crane.url = "github:ipetkov/crane";
-    crane.inputs.nixpkgs.follows = "nixpkgs";
-    flake-utils.url = "github:numtide/flake-utils";
+    utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, crane, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system: {
-      packages.default = crane.lib.${system}.buildPackage {
-        src = ./.;
-      };
-    });
+  outputs = { self, nixpkgs, utils, naersk }:
+    utils.lib.eachDefaultSystem (system:
+      let
+        pkgs = import nixpkgs { inherit system; };
+        naersk-lib = pkgs.callPackage naersk { };
+      in
+      {
+        defaultPackage = naersk-lib.buildPackage {
+          src = ./.;
+
+          nativeBuildInputs = with pkgs; [ pkg-config ];
+          buildInputs = with pkgs; [ openssl ];
+        };
+        devShell = with pkgs; mkShell {
+          buildInputs = [ cargo rustc rustfmt pre-commit rustPackages.clippy ];
+          RUST_SRC_PATH = rustPlatform.rustLibSrc;
+        };
+      });
 }
