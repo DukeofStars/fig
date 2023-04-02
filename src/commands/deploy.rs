@@ -1,5 +1,5 @@
 use std::{
-    fs, io,
+    fs,
     path::{self, PathBuf},
 };
 
@@ -7,7 +7,7 @@ use clap::Args;
 use miette::{Diagnostic, Result};
 use thiserror::Error;
 
-use crate::{repository::Repository, Error::*};
+use fig::{repository::Repository, Error::*};
 use Error::*;
 
 #[derive(Args)]
@@ -18,12 +18,6 @@ pub struct DeployOptions {
 
 #[derive(Debug, Diagnostic, Error)]
 pub enum Error {
-    #[error("Namespace doesn't exist")]
-    #[diagnostic(code(fig::deploy::namespace_doesnt_exist_io))]
-    NamespaceDoesntExistIO(#[source] io::Error),
-    #[error("Namespace doesn't exist")]
-    #[diagnostic(code(fig::deploy::namespace_doesnt_exist))]
-    NamespaceDoesntExist,
     #[error(transparent)]
     #[diagnostic(code(fig::deploy::strip_prefix_error))]
     StripPrefixError(#[from] path::StripPrefixError),

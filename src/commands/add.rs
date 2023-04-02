@@ -6,7 +6,7 @@ use miette::Diagnostic;
 use miette::Result;
 use thiserror::Error;
 
-use crate::{determine_namespace, repository::Repository, strip_namespace, Error::*, ManyError};
+use fig::{determine_namespace, repository::Repository, strip_namespace, Error::*, ManyError};
 use Error::*;
 
 #[derive(Error, Diagnostic, Debug)]
@@ -18,7 +18,7 @@ pub enum Error {
     #[diagnostic(code(fig::add::pattern_error))]
     PatternError(#[source] glob::PatternError),
     #[error(transparent)]
-    SuperError(#[from] super::Error),
+    SuperError(#[from] fig::Error),
     #[error("The file '{}' does not exist", .0.display())]
     #[diagnostic(code(fig::add::file_doesnt_exist))]
     FileDoesntExist(PathBuf),

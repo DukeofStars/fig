@@ -1,15 +1,17 @@
+mod commands;
+
 use clap::Parser;
 use miette::Result;
 
-use fig::{
+use commands::{
     add::{self, AddOptions},
     cmd::{self, CmdOptions},
     deploy::{self, DeployOptions},
     list::{self, ListOptions},
-    namespace::{self, NamespaceOptions},
-    purge,
-    repository::{Repository, RepositoryInitOptions},
+    namespace::{namespace_cli, NamespaceOptions},
+    purge::purge,
 };
+use fig::repository::{Repository, RepositoryInitOptions};
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
@@ -28,7 +30,7 @@ fn main() -> Result<()> {
         }
         Command::Purge => {
             let repository = Repository::open()?;
-            purge::purge(&repository)?;
+            purge(&repository)?;
         }
         Command::List(options) => {
             let repository = Repository::open()?;
@@ -40,7 +42,7 @@ fn main() -> Result<()> {
         }
         Command::Namespace(options) => {
             let repository = Repository::open()?;
-            namespace::namespace_cli(&repository, options)?;
+            namespace_cli(&repository, options)?;
         }
     }
 

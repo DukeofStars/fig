@@ -3,7 +3,7 @@ use std::process::Command;
 use clap::Args;
 use miette::Result;
 
-use crate::repository::Repository;
+use fig::repository::Repository;
 
 #[derive(Args)]
 pub struct CmdOptions {
