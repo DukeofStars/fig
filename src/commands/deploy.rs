@@ -1,6 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use clap::Args;
+use log::{debug, error, trace};
 use miette::Result;
 
 use fig::{repository::Repository, Error::*};
@@ -29,8 +30,11 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
             let path = file
                 .strip_prefix(name)
                 .ok_or_else(|| {
-                    println!("ERROR_LOG, try running with --verbose for more info");
-                    dbg!(&namespace_dir, &namespace_path, &file);
+                    error!(
+                        "Stripping namespace prefix '{name}' failed. INFO:\nnamespace_dir='{namespace_dir}'\nnamespace_path='{namespace_path}'\nfile='{file}'",
+                        namespace_dir=namespace_dir.display(),
+                        namespace_path=namespace_path.display(),
+                    );
                 })
                 .expect("Failed to strip prefix")
                 .trim_start_matches("/");
@@ -43,15 +47,26 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
                 if options.verbose {
                     println!("Creating directory: {parent}", parent = parent.display());
                 }
+                trace!("Creating directory '{path}'", path = parent.display());
                 fs::create_dir_all(&parent).map_err(IoError)?;
             }
 
             if options.verbose {
-                println!("{} -> {}", src.display(), dest.display())
+                println!("'{}' -> '{}'", src.display(), dest.display())
             }
+            debug!(
+                "Deploying '{src}' -> '{dest}'",
+                src = src.display(),
+                dest = dest.display()
+            );
             fs::copy(&src, &dest).map_err(IoError).map_err(|e| {
-                println!("ERROR_LOG, try running with --verbose for more info");
-                dbg!(&namespace_dir, &namespace_path, &path);
+                error!(
+                    "Copying '{src}' to '{dest}' failed. INFO:\nnamespace_dir='{namespace_dir}'\nnamespace_path='{namespace_path}'\npath='{path}'", 
+                    src=src.display(),
+                    dest=dest.display(),
+                    namespace_dir=namespace_dir.display(),
+                    namespace_path=namespace_path.display()
+                );
                 e
             })?;
         }

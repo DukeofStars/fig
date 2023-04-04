@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use directories::ProjectDirs;
+use log::{as_display, error, trace};
 use miette::{bail, Diagnostic, Result};
 use repository::Repository;
 use thiserror::Error;
@@ -67,7 +68,7 @@ impl<E: Diagnostic> ManyError<E> {
     }
 }
 
-fn project_dirs() -> Result<ProjectDirs> {
+pub fn project_dirs() -> Result<ProjectDirs> {
     Ok(ProjectDirs::from("", "", "fig").ok_or(Error::ProjectPathFailed)?)
 }
 
@@ -84,6 +85,14 @@ pub fn determine_namespace(
     path: impl Into<PathBuf>,
 ) -> Result<(String, PathBuf)> {
     let mut path = path.into();
+    trace!(
+        repository = as_display!(repository.dir.display());
+        "Determining namespace of '{path}'",
+        path=path.display()
+    );
+
+    let original_path = path.clone();
+
     while let Some(parent) = path.clone().parent() {
         path = parent
             .to_str()
@@ -96,5 +105,7 @@ pub fn determine_namespace(
             }
         }
     }
+
+    error!("'{path}' has no namespace", path = original_path.display());
     bail!(Error::HasNoNamespace)
 }

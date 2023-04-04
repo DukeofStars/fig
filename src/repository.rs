@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, fs, path::PathBuf};
 
+use log::debug;
 use miette::{bail, Diagnostic, Result};
 use thiserror::Error;
 
@@ -65,6 +66,8 @@ impl Repository {
     pub fn init(options: RepositoryInitOptions) -> Result<Self> {
         let dir = Repository::dir()?;
 
+        debug!("Creating repository at '{dir}'", dir = dir.display());
+
         if dir.exists() && !options.force {
             bail!(AlreadyInitialised)
         }
@@ -87,17 +90,19 @@ impl Repository {
 
     /// Open already existing repository
     pub fn open() -> Result<Self> {
-        let project_dirs = crate::project_dirs()?;
         let mut many_error = ManyError::new();
-        let dir = project_dirs.data_dir();
+        let dir = Repository::dir()?;
+
+        debug!("Opening repository at '{dir}'", dir = dir.display());
+
         if !dir.exists() {
             many_error.add(NotInitialised);
         }
-        let repository = git2::Repository::open(dir).map_err(GitError);
+        let repository = git2::Repository::open(&dir).map_err(GitError);
         if let Ok(repository) = repository {
             return Ok(Self {
                 git_repository: repository,
-                dir: dir.to_path_buf(),
+                dir,
             });
         } else if let Err(e) = repository {
             many_error.add(SuperError(e));

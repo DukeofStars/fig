@@ -1,6 +1,10 @@
 mod commands;
+mod log_utils;
+
+use std::{fs::OpenOptions, panic, process};
 
 use clap::Parser;
+use log::LevelFilter;
 use miette::Result;
 
 use commands::{
@@ -12,10 +16,59 @@ use commands::{
     purge::purge,
 };
 use fig::repository::{Repository, RepositoryInitOptions};
+use simplelog::{Config, WriteLogger};
 
 fn main() -> Result<()> {
-    let cli = Cli::parse();
+    // Initialise logger
+    let log_file = fig::project_dirs()?.data_local_dir().join("fig-log.txt");
 
+    let log_file_parent = log_file
+        .parent()
+        .expect("Log file path doesn't have parent");
+    if !log_file_parent.exists() {
+        log_utils::create_dir_all!(&log_file_parent)
+            .expect("Failed to create directory for log file");
+    }
+
+    let _ = WriteLogger::init(
+        LevelFilter::Trace,
+        Config::default(),
+        OpenOptions::new()
+            .create(true)
+            .write(true)
+            .read(true)
+            .open(&log_file)
+            .expect("Failed to create log file"),
+    );
+
+    // Set up custom panic hook
+    let default_hook = panic::take_hook();
+
+    let log_file_cloned = log_file.clone();
+
+    panic::set_hook(Box::new(move |panic_info| {
+        default_hook(panic_info);
+        eprintln!(
+            "note: log files can be found at {log_file}",
+            log_file = log_file.display()
+        );
+        process::exit(1);
+    }));
+
+    let cli = Cli::parse();
+    let result = run(cli);
+
+    if result.is_err() {
+        eprintln!(
+            "note: log files can be found at {log_file}",
+            log_file = log_file_cloned.display()
+        );
+    }
+
+    result
+}
+
+fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Init(options) => {
             Repository::init(options)?;
@@ -45,7 +98,6 @@ fn main() -> Result<()> {
             namespace_cli(&repository, options)?;
         }
     }
-
     Ok(())
 }
 

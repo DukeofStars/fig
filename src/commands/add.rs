@@ -1,13 +1,17 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::Args;
 use glob::glob;
+use log::error;
+use log::trace;
 use miette::Diagnostic;
 use miette::Result;
 use thiserror::Error;
 
 use fig::{determine_namespace, repository::Repository, strip_namespace, Error::*, ManyError};
 use Error::*;
+
+use crate::log_utils;
 
 #[derive(Error, Diagnostic, Debug)]
 pub enum Error {
@@ -51,12 +55,15 @@ pub fn add(repository: &Repository, options: AddOptions) -> Result<()> {
             many_error.add(SuperError(err));
             continue;
         }
-        let file: PathBuf = file
-            .unwrap()
-            .to_str()
-            .ok_or(PathConversionFail)?
-            .trim_start_matches("\\\\?\\")
-            .into();
+        let path = file.as_ref().unwrap().to_str().ok_or(PathConversionFail);
+        let file: PathBuf = if let Ok(path) = path {
+            path.trim_start_matches("\\\\?\\").into()
+        } else if let Err(err) = path {
+            many_error.add(Error::SuperError(err));
+            continue;
+        } else {
+            unreachable!()
+        };
 
         if !file.exists() {
             many_error.add(FileDoesntExist(file));
@@ -64,17 +71,25 @@ pub fn add(repository: &Repository, options: AddOptions) -> Result<()> {
         }
         let (name, path) = determine_namespace(repository, &file)?;
 
-        let namespace_path = repo_dir.join(&name);
+        let namespace_path = repo_dir.join(&name).canonicalize().unwrap();
         let new_path = namespace_path.join(strip_namespace(path, &file).ok_or(PathConversionFail)?);
         if let Some(parent) = new_path.parent() {
-            fs::create_dir_all(namespace_path.join(parent)).map_err(IoError)?;
+            let parent = namespace_path.join(parent);
+            if !parent.exists() {
+                if let Err(err) = log_utils::create_dir_all!(&parent).map_err(IoError) {
+                    many_error.add(Error::SuperError(err));
+                    continue;
+                }
+            }
         }
 
         let output_path = &namespace_path.join(new_path);
         if options.mock {
             println!("{} -> {}", file.display(), output_path.display())
-        } else {
-            fs::copy(&file, &output_path).map_err(IoError)?;
+        } else if file.is_file() {
+            log_utils::copy_file!(&file, &output_path).map_err(IoError)?;
+        } else if file.is_dir() {
+            log_utils::copy_dir!(&file, &output_path);
         }
     }
 
