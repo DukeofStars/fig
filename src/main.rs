@@ -25,6 +25,11 @@ fn main() -> Result<()> {
     let log_file_parent = log_file
         .parent()
         .expect("Log file path doesn't have parent");
+
+    if log_file.exists() {
+        std::fs::remove_file(&log_file).expect("Failed to remove old log file");
+    }
+
     if !log_file_parent.exists() {
         log_utils::create_dir_all!(&log_file_parent)
             .expect("Failed to create directory for log file");

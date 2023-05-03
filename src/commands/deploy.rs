@@ -1,10 +1,12 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::Args;
-use log::{debug, error, trace};
+use log::{error, trace};
 use miette::Result;
 
 use fig::{repository::Repository, Error::*};
+
+use crate::log_utils;
 
 #[derive(Args)]
 pub struct DeployOptions {
@@ -18,8 +20,9 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
 
     for (name, namespace_path) in &namespaces {
         let namespace_dir = dir.join(name);
+        dbg!(&namespace_dir, &dir);
         let mut files = vec![];
-        get_files(&dir, &namespace_dir, &mut files, 10)?;
+        get_files(&namespace_dir, &namespace_dir, &mut files, 10)?;
         for file in files {
             let file = file
                 .to_str()
@@ -27,17 +30,20 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
                 .trim_start_matches("\\")
                 .trim_start_matches("/");
 
-            let path = file
-                .strip_prefix(name)
-                .ok_or_else(|| {
-                    error!(
-                        "Stripping namespace prefix '{name}' failed. INFO:\nnamespace_dir='{namespace_dir}'\nnamespace_path='{namespace_path}'\nfile='{file}'",
-                        namespace_dir=namespace_dir.display(),
-                        namespace_path=namespace_path.display(),
-                    );
-                })
-                .expect("Failed to strip prefix")
-                .trim_start_matches("/");
+            dbg!(file);
+
+            let path = file;
+            // .strip_prefix(name)
+            // .ok_or_else(|| {
+            //     error!(
+            //         "Stripping namespace prefix '{name}' failed. INFO:\nnamespace_dir='{namespace_dir}'\nnamespace_path='{namespace_path}'\nfile='{file}'",
+            //         namespace_dir=namespace_dir.display(),
+            //         namespace_path=namespace_path.display(),
+            //     );
+            // })
+            // .expect("Failed to strip prefix")
+            // .trim_start_matches("/")
+            // .trim_start_matches("\\");
 
             let dest = namespace_path.join(&path);
             let src = namespace_dir.join(&path);
@@ -47,28 +53,13 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
                 if options.verbose {
                     println!("Creating directory: {parent}", parent = parent.display());
                 }
-                trace!("Creating directory '{path}'", path = parent.display());
-                fs::create_dir_all(&parent).map_err(IoError)?;
+                log_utils::create_dir_all!(&parent).map_err(IoError)?;
             }
 
             if options.verbose {
-                println!("'{}' -> '{}'", src.display(), dest.display())
+                println!("Copying '{}' to '{}'", src.display(), dest.display())
             }
-            debug!(
-                "Deploying '{src}' -> '{dest}'",
-                src = src.display(),
-                dest = dest.display()
-            );
-            fs::copy(&src, &dest).map_err(IoError).map_err(|e| {
-                error!(
-                    "Copying '{src}' to '{dest}' failed. INFO:\nnamespace_dir='{namespace_dir}'\nnamespace_path='{namespace_path}'\npath='{path}'", 
-                    src=src.display(),
-                    dest=dest.display(),
-                    namespace_dir=namespace_dir.display(),
-                    namespace_path=namespace_path.display()
-                );
-                e
-            })?;
+            log_utils::copy_file!(&src, &dest).map_err(IoError)?;
         }
     }
 
@@ -83,6 +74,10 @@ fn get_files(
 ) -> Result<()> {
     if depth == 0 {
         return Ok(());
+    } else if let Some(Some(file_name)) = entry.file_name().map(|n| n.to_str()) {
+        if file_name.starts_with(".") {
+            return Ok(());
+        }
     } else if let Some(extension) = entry.extension() {
         if extension == "fig" {
             return Ok(());

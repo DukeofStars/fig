@@ -76,7 +76,9 @@ impl Repository {
 
         template::generate(&dir)?;
 
-        let dot_gitignore = "";
+        let dot_gitignore = "
+namespace.fig
+        ";
         fs::write(dir.join(".gitignore"), dot_gitignore).map_err(IoError)?;
 
         // Initialise git
