@@ -20,7 +20,6 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
 
     for (name, namespace_path) in &namespaces {
         let namespace_dir = dir.join(name);
-        dbg!(&namespace_dir, &dir);
         let mut files = vec![];
         get_files(&namespace_dir, &namespace_dir, &mut files, 10)?;
         for file in files {
@@ -29,8 +28,6 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
                 .unwrap()
                 .trim_start_matches("\\")
                 .trim_start_matches("/");
-
-            dbg!(file);
 
             let path = file;
             // .strip_prefix(name)
@@ -74,11 +71,13 @@ fn get_files(
 ) -> Result<()> {
     if depth == 0 {
         return Ok(());
-    } else if let Some(Some(file_name)) = entry.file_name().map(|n| n.to_str()) {
-        if file_name.starts_with(".") {
-            return Ok(());
-        }
-    } else if let Some(extension) = entry.extension() {
+    }
+    // else if let Some(Some(file_name)) = entry.file_name().map(|n| n.to_str()) {
+    //     if file_name.starts_with(".") {
+    //         return Ok(());
+    //     }
+    // }
+    else if let Some(extension) = entry.extension() {
         if extension == "fig" {
             return Ok(());
         }

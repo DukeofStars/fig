@@ -1,10 +1,10 @@
 mod commands;
 mod log_utils;
 
-use std::{fs::OpenOptions, panic, process};
+use std::{env, fs::OpenOptions, panic, process};
 
 use clap::Parser;
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use miette::Result;
 
 use commands::{
@@ -44,13 +44,15 @@ fn main() -> Result<()> {
             .read(true)
             .open(&log_file)
             .expect("Failed to create log file"),
-    );
+    )
+    .expect("Failed to init WriteLogger");
+    let log_file_cloned = log_file.clone();
+
+    // Log state.
+    info!("{}", env::args().collect::<Vec<_>>().join(" "));
 
     // Set up custom panic hook
     let default_hook = panic::take_hook();
-
-    let log_file_cloned = log_file.clone();
-
     panic::set_hook(Box::new(move |panic_info| {
         default_hook(panic_info);
         eprintln!(
