@@ -1,7 +1,9 @@
 use clap::Args;
-use fig::{list::get_all_files, repository::Repository};
+use fig::repository::Repository;
 use miette::Result;
 use owo_colors::OwoColorize;
+
+use crate::list::get_all_files;
 
 #[derive(Args)]
 pub struct ListOptions {

@@ -6,7 +6,6 @@ use miette::{bail, Diagnostic, Result};
 use repository::Repository;
 use thiserror::Error;
 
-pub mod list;
 pub mod repository;
 pub mod template;
 

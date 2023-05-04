@@ -1,20 +1,14 @@
 mod commands;
+mod list;
 mod log_utils;
 
 use std::{env, fs::OpenOptions, panic, process};
 
 use clap::Parser;
+use commands::{AddOptions, CmdOptions, DeployOptions, InfoOptions, ListOptions, NamespaceOptions};
 use log::{info, LevelFilter};
 use miette::Result;
 
-use commands::{
-    add::{self, AddOptions},
-    cmd::{self, CmdOptions},
-    deploy::{self, DeployOptions},
-    list::{self, ListOptions},
-    namespace::{namespace_cli, NamespaceOptions},
-    purge::purge,
-};
 use fig::repository::{Repository, RepositoryInitOptions};
 use simplelog::{Config, WriteLogger};
 
@@ -82,27 +76,31 @@ fn run(cli: Cli) -> Result<()> {
         }
         Command::Add(options) => {
             let repository = Repository::open()?;
-            add::add(&repository, options)?;
+            commands::add(&repository, options)?;
         }
         Command::Deploy(options) => {
             let repository = Repository::open()?;
-            deploy::deploy(&repository, options)?;
+            commands::deploy(&repository, options)?;
         }
         Command::Purge => {
             let repository = Repository::open()?;
-            purge(&repository)?;
+            commands::purge(&repository)?;
         }
         Command::List(options) => {
             let repository = Repository::open()?;
-            list::list(&repository, options)?;
+            commands::list::list(&repository, options)?;
         }
         Command::Cmd(options) => {
             let repository = Repository::open()?;
-            cmd::cmd(&repository, options)?;
+            commands::cmd(&repository, options)?;
         }
         Command::Namespace(options) => {
             let repository = Repository::open()?;
-            namespace_cli(&repository, options)?;
+            commands::namespace_cli(&repository, options)?;
+        }
+        Command::Info(options) => {
+            let repository = Repository::open()?;
+            commands::info(&repository, options)?;
         }
     }
     Ok(())
@@ -135,4 +133,6 @@ enum Command {
     /// Configure namespaces
     #[clap(alias = "ns")]
     Namespace(NamespaceOptions),
+    ///
+    Info(InfoOptions),
 }

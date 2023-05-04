@@ -1,8 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use fig::{repository::Repository, strip_namespace};
 use miette::{IntoDiagnostic, Result};
-
-use crate::{repository::Repository, strip_namespace};
 
 pub fn get_all_files(repository: &Repository) -> Result<Vec<(String, Vec<PathBuf>)>> {
     let mut files = vec![];

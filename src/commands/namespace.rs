@@ -6,6 +6,8 @@ use owo_colors::OwoColorize;
 
 use fig::repository::Repository;
 
+use crate::list::get_all_files;
+
 #[derive(Args)]
 pub struct NamespaceOptions {
     #[clap(subcommand)]
@@ -72,7 +74,7 @@ pub fn namespace_cli(repository: &Repository, options: NamespaceOptions) -> Resu
 
             // Get number of files inside namespace
             let count = {
-                let files = fig::list::get_all_files(repository)?;
+                let files = get_all_files(repository)?;
                 let files_in_ns = &files
                     .iter()
                     .find(|(name_, _files)| name_ == &name)
