@@ -1,11 +1,8 @@
-use std::fs;
-
-use miette::Result;
-
-use fig::{repository::Repository, Error::*};
+use crate::repository::Repository;
+use color_eyre::Result;
 
 pub fn purge(repository: &Repository) -> Result<()> {
-    fs::remove_dir_all(&repository.dir).map_err(IoError)?;
+    std::fs::remove_dir_all(&repository.dir)?;
 
     Ok(())
 }

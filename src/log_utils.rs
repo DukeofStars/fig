@@ -15,6 +15,22 @@ macro_rules! create_dir_all {
 }
 
 #[macro_export]
+macro_rules! remove_dir_all {
+    ($path:expr) => {{
+        use log::{error, trace};
+        std::fs::remove_dir_all($path)
+            .map_err(|e| {
+                error!("Failed to remove directory '{dir}'", dir = $path.display());
+                e
+            })
+            .map(|a| {
+                trace!("Removed directory '{path}'", path = $path.display());
+                a
+            })
+    }};
+}
+
+#[macro_export]
 macro_rules! copy_file {
     ($from:expr, $to:expr) => {{
         use log::{error, trace};
@@ -45,7 +61,7 @@ macro_rules! copy_dir {
         let mut files = vec![];
         // Iterator function
         fn iterate_dir(files: &mut Vec<PathBuf>, path: &PathBuf, depth_guard: u8) {
-            for file in ::fig::read_dir!(&path).expect("Failed to read directory") {
+            for file in $crate::read_dir!(&path).expect("Failed to read directory") {
                 if let Ok(file) = file {
                     let path = file.path();
                     if path.is_file() {
@@ -79,11 +95,11 @@ macro_rules! copy_dir {
             if let Some(parent) = dst.parent() {
                 let parent = $to.join(parent);
                 if !parent.exists() {
-                    let _ = ::fig::create_dir_all!(&parent);
+                    let _ = $crate::create_dir_all!(&parent);
                 }
             }
 
-            if let Ok(_) = ::fig::copy_file!(file, &dst) {
+            if let Ok(_) = $crate::copy_file!(file, &dst) {
                 copied_files.push(dst);
             } else {
                 continue;

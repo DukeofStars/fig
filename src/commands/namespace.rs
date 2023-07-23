@@ -1,19 +1,19 @@
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use clap::{Args, Subcommand};
-use miette::*;
+use color_eyre::eyre::{Context, ensure};
+use color_eyre::Result;
 use owo_colors::OwoColorize;
 
-use fig::repository::Repository;
+use crate::repository::Repository;
 
-use crate::list::get_all_files;
-
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct NamespaceOptions {
     #[clap(subcommand)]
     subcommand: Command,
 }
-#[derive(Subcommand)]
+
+#[derive(Debug, Subcommand)]
 pub enum Command {
     List {
         #[clap(long)]
@@ -29,17 +29,27 @@ pub enum Command {
     },
 }
 
-pub fn namespace_cli(repository: &Repository, options: NamespaceOptions) -> Result<()> {
-    match options.subcommand {
+pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Result<()> {
+    match &options.subcommand {
         Command::List { json } => {
-            if json {
+            if *json {
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&repository.namespaces()?).unwrap()
                 )
             } else {
-                for (name, path) in repository.namespaces()? {
-                    println!("{:12}: {}", name.blue(), path.display().bright_blue());
+                for namespace in repository.namespaces()? {
+                    println!(
+                        "{:12}: {}",
+                        namespace
+                            .location
+                            .file_name()
+                            .expect("No file name?")
+                            .to_str()
+                            .unwrap()
+                            .blue(),
+                        namespace.target.display().bright_blue()
+                    );
                 }
             }
             Ok(())
@@ -48,16 +58,12 @@ pub fn namespace_cli(repository: &Repository, options: NamespaceOptions) -> Resu
             let dir = repository.dir.join(&name);
             let namespace_file = dir.join("namespace.fig");
 
-            fs::create_dir(&dir)
-                .into_diagnostic()
-                .wrap_err("Failed to create namespace directory")?;
+            crate::create_dir_all!(&dir).context("Failed to create namespace directory")?;
 
             let path = path.canonicalize().unwrap();
             let path = path.to_str().unwrap().trim_start_matches("\\\\?\\");
 
-            fs::write(&namespace_file, &path)
-                .into_diagnostic()
-                .wrap_err("Failed to write to namespace file")?;
+            std::fs::write(namespace_file, path).context("Failed to write to namespace file")?;
 
             println!("Added namespace {}: {}", name.blue(), path.bright_blue());
 
@@ -66,40 +72,30 @@ pub fn namespace_cli(repository: &Repository, options: NamespaceOptions) -> Resu
         Command::Remove { name } => {
             let namespaces = repository.namespaces()?;
             ensure!(
-                namespaces.contains_key(&name),
+                namespaces.iter().any(|ns| ns
+                    .location
+                    .file_name()
+                    .expect("No file name?")
+                    .to_str()
+                    .unwrap()
+                    == name),
                 "The namespace {name} does not exist"
             );
 
             let namespace_root = repository.dir.join(&name);
 
-            // Get number of files inside namespace
-            let count = {
-                let files = get_all_files(repository)?;
-                let files_in_ns = &files
-                    .iter()
-                    .find(|(name_, _files)| name_ == &name)
-                    .unwrap()
-                    .1;
-
-                files_in_ns.iter().count()
-            };
-
-            if count > 0 {
-                print!("Are you sure you want to delete {name}? It contains {count} files. [y/N] ");
-                let mut buf = String::new();
-                std::io::stdin()
-                    .read_line(&mut buf)
-                    .expect("Failed to read from stdin");
-                let buf = buf.trim().to_lowercase();
-                if buf == "y" {
-                } else {
-                    return Ok(());
-                }
+            print!("Are you sure you want to delete {name}? [y/N] ");
+            let mut buf = String::new();
+            std::io::stdin()
+                .read_line(&mut buf)
+                .expect("Failed to read from stdin");
+            let buf = buf.trim().to_lowercase();
+            if buf == "y" {} else {
+                return Ok(());
             }
 
-            fs::remove_dir_all(&namespace_root)
-                .into_diagnostic()
-                .wrap_err("Failed to remove namespace directory")?;
+            crate::remove_dir_all!(&namespace_root)
+                .context("Failed to remove namespace directory")?;
 
             Ok(())
         }

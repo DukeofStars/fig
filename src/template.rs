@@ -3,18 +3,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use miette::{Diagnostic, Result};
 use thiserror::Error;
 
 use self::Error::*;
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug)]
 pub enum Error {
     #[error("Failed to obtain base directories for your operating system")]
-    #[diagnostic(code(fig::no_base_dirs))]
     NoBaseDirs,
     #[error(transparent)]
-    #[diagnostic(code(fig::io_error))]
     IoError(#[from] std::io::Error),
 }
 

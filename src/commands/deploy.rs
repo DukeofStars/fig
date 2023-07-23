@@ -1,62 +1,47 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Args;
-use log::{error, trace};
-use miette::Result;
+use color_eyre::eyre::eyre;
+use color_eyre::Result;
 
-use fig::{repository::Repository, Error::*};
+use crate::repository::Repository;
 
-use crate::log_utils;
-
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct DeployOptions {
     #[clap(short, long)]
     verbose: bool,
 }
 
-pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
+pub fn deploy(repository: &Repository, options: &DeployOptions) -> Result<()> {
     let namespaces = repository.namespaces()?;
-    let dir = repository.dir.to_path_buf();
 
-    for (name, namespace_path) in &namespaces {
-        let namespace_dir = dir.join(name);
+    for namespace in &namespaces {
         let mut files = vec![];
-        get_files(&namespace_dir, &namespace_dir, &mut files, 10)?;
+        get_files(&namespace.location, &namespace.location, &mut files, 10)?;
         for file in files {
             let file = file
                 .to_str()
                 .unwrap()
-                .trim_start_matches("\\")
-                .trim_start_matches("/");
+                .trim_start_matches('\\')
+                .trim_start_matches('/');
 
             let path = file;
-            // .strip_prefix(name)
-            // .ok_or_else(|| {
-            //     error!(
-            //         "Stripping namespace prefix '{name}' failed. INFO:\nnamespace_dir='{namespace_dir}'\nnamespace_path='{namespace_path}'\nfile='{file}'",
-            //         namespace_dir=namespace_dir.display(),
-            //         namespace_path=namespace_path.display(),
-            //     );
-            // })
-            // .expect("Failed to strip prefix")
-            // .trim_start_matches("/")
-            // .trim_start_matches("\\");
 
-            let dest = namespace_path.join(&path);
-            let src = namespace_dir.join(&path);
+            let dest = namespace.target.join(path);
+            let src = namespace.location.join(path);
 
             // Make sure dest directory exists
             if let Some(parent) = dest.parent() {
                 if options.verbose {
                     println!("Creating directory: {parent}", parent = parent.display());
                 }
-                log_utils::create_dir_all!(&parent).map_err(IoError)?;
+                crate::create_dir_all!(parent)?;
             }
 
             if options.verbose {
                 println!("Copying '{}' to '{}'", src.display(), dest.display())
             }
-            log_utils::copy_file!(&src, &dest).map_err(IoError)?;
+            crate::copy_file!(&src, &dest)?;
         }
     }
 
@@ -65,25 +50,19 @@ pub fn deploy(repository: &Repository, options: DeployOptions) -> Result<()> {
 
 fn get_files(
     parent_dir: &PathBuf,
-    entry: &PathBuf,
+    entry: &Path,
     files: &mut Vec<PathBuf>,
     depth: u8,
 ) -> Result<()> {
     if depth == 0 {
         return Ok(());
-    }
-    // else if let Some(Some(file_name)) = entry.file_name().map(|n| n.to_str()) {
-    //     if file_name.starts_with(".") {
-    //         return Ok(());
-    //     }
-    // }
-    else if let Some(extension) = entry.extension() {
+    } else if let Some(extension) = entry.extension() {
         if extension == "fig" {
             return Ok(());
         }
     } else if entry.is_dir() {
-        for entry in entry.read_dir().map_err(IoError)? {
-            let entry = entry.map_err(IoError)?.path();
+        for entry in entry.read_dir()? {
+            let entry = entry?.path();
             get_files(parent_dir, &entry, files, depth - 1)?;
         }
 
@@ -93,8 +72,12 @@ fn get_files(
     let path = PathBuf::from(
         entry
             .to_str()
-            .ok_or_else(|| PathConversionFail)?
-            .trim_start_matches(parent_dir.to_str().ok_or_else(|| PathConversionFail)?),
+            .ok_or_else(|| eyre!("Failed to convert path"))?
+            .trim_start_matches(
+                parent_dir
+                    .to_str()
+                    .ok_or_else(|| eyre!("Failed to convert path"))?,
+            ),
     );
     files.push(path);
     Ok(())

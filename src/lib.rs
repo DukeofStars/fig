@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use directories::ProjectDirs;
 use log::{as_display, error, trace};
-use miette::Diagnostic;
 use namespace::Namespace;
 use repository::Repository;
 use thiserror::Error;
@@ -12,7 +10,10 @@ pub mod namespace;
 pub mod repository;
 pub mod template;
 
-#[derive(Debug, Diagnostic, Error)]
+#[cfg(feature = "commands")]
+pub mod commands;
+
+#[derive(Debug, Error)]
 pub enum Error {
     #[error("'{}' is not in any known namespace", .0.display())]
     HasNoNamespace(PathBuf),
@@ -20,15 +21,6 @@ pub enum Error {
     PathConversionFail,
     #[error(transparent)]
     RepoError(#[from] repository::Error),
-}
-
-/// Panics on fail, use try_project_dirs if you want to catch errors.
-pub fn project_dirs() -> ProjectDirs {
-    ProjectDirs::from("", "", "fig")
-        .expect("Failed to find home directory, maybe your operating system is unsupported?")
-}
-pub fn try_project_dirs() -> Option<ProjectDirs> {
-    ProjectDirs::from("", "", "fig")
 }
 
 pub fn determine_namespace(
@@ -54,5 +46,5 @@ pub fn determine_namespace(
     }
 
     error!("'{path}' has no namespace", path = original_path.display());
-    Err(Error::HasNoNamespace(original_path.into()))
+    Err(Error::HasNoNamespace(original_path))
 }

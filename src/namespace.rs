@@ -1,9 +1,9 @@
-use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
-use miette::Diagnostic;
 use thiserror::Error;
 
-#[derive(Debug, Diagnostic, Error)]
+#[derive(Debug, Error)]
 pub enum Error {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
@@ -11,6 +11,7 @@ pub enum Error {
     StripPrefixError(#[from] std::path::StripPrefixError),
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Namespace {
     /// The output location, where files are deployed to.
     pub target: PathBuf,
@@ -25,7 +26,7 @@ impl Namespace {
         Ok(files)
     }
 
-    fn recurse_dir(&self, dir: &PathBuf, files: &mut Vec<PathBuf>, depth: u8) -> Result<(), Error> {
+    fn recurse_dir(&self, dir: &Path, files: &mut Vec<PathBuf>, depth: u8) -> Result<(), Error> {
         if depth == 0 {
             panic!("Overflowed depth")
         }

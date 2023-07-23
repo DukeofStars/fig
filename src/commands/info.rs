@@ -1,11 +1,12 @@
 use std::path::PathBuf;
 
+use crate::namespace::Namespace;
+use crate::repository::Repository;
 use clap::Args;
-use fig::repository::Repository;
-use miette::Result;
+use color_eyre::Result;
 use serde::{Deserialize, Serialize};
 
-#[derive(Args)]
+#[derive(Debug, Args)]
 pub struct InfoOptions {
     #[clap(long)]
     repo_dir: bool,
@@ -15,23 +16,24 @@ pub struct InfoOptions {
     json: bool,
 }
 
-#[derive(Deserialize, Serialize)]
+// TODO: move into another file
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Info {
-    namespaces: Vec<(String, PathBuf)>,
+    namespaces: Vec<Namespace>,
     repository_dir: PathBuf,
     log_dir: PathBuf,
 }
 impl Info {
     pub fn gather(repo: &Repository) -> Result<Self> {
         Ok(Self {
-            namespaces: { repo.namespaces()?.into_iter().collect() },
+            namespaces: { repo.namespaces()? },
             repository_dir: { repo.dir.clone() },
-            log_dir: { fig::project_dirs()?.data_local_dir().join("fig-log.txt") },
+            log_dir: { crate::project_dirs().data_local_dir().join("fig-log.txt") },
         })
     }
 }
 
-pub fn info(repo: &Repository, options: InfoOptions) -> Result<()> {
+pub fn info(repo: &Repository, options: &InfoOptions) -> Result<()> {
     let info = Info::gather(repo)?;
 
     if options.json {
