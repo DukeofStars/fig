@@ -1,10 +1,11 @@
 use std::path::PathBuf;
-use directories::ProjectDirs;
 
+use directories::ProjectDirs;
 use log::{as_display, error, trace};
+use thiserror::Error;
+
 use namespace::Namespace;
 use repository::Repository;
-use thiserror::Error;
 
 mod log_utils;
 pub mod namespace;
