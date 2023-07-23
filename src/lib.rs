@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use directories::ProjectDirs;
 
 use log::{as_display, error, trace};
 use namespace::Namespace;
@@ -9,9 +10,15 @@ mod log_utils;
 pub mod namespace;
 pub mod repository;
 pub mod template;
+pub mod info;
 
 #[cfg(feature = "commands")]
 pub mod commands;
+
+pub fn project_dirs() -> ProjectDirs {
+    ProjectDirs::from("", "", "fig")
+        .expect("Failed to find home directory, maybe your operating system is unsupported?")
+}
 
 #[derive(Debug, Error)]
 pub enum Error {

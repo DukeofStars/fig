@@ -1,27 +1,23 @@
+use clap::{command, Parser, Subcommand};
+use color_eyre::Result;
+
+pub use fig::*;
+use fig::repository::Repository;
+
 use crate::{
     commands::add::AddOptions, commands::cmd::CmdOptions, commands::deploy::DeployOptions,
     commands::info::InfoOptions, commands::init::InitOptions, commands::list::ListOptions,
     commands::namespace::NamespaceOptions,
 };
-use clap::{command, Parser, Subcommand};
-use color_eyre::Result;
-use directories::ProjectDirs;
-
-use fig::repository::Repository;
-pub use fig::*;
 
 mod commands;
-
-fn project_dirs() -> ProjectDirs {
-    ProjectDirs::from("", "", "fig")
-        .expect("Failed to find home directory, maybe your operating system is unsupported?")
-}
 
 #[derive(Debug, Parser)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
 }
+
 #[derive(Debug, Subcommand)]
 enum Command {
     Add(AddOptions),
