@@ -1,110 +1,58 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use directories::ProjectDirs;
 use log::{as_display, error, trace};
-use miette::{bail, Diagnostic, Result};
+use miette::Diagnostic;
+use namespace::Namespace;
 use repository::Repository;
 use thiserror::Error;
 
+mod log_utils;
+pub mod namespace;
 pub mod repository;
 pub mod template;
 
-#[derive(Error, Diagnostic, Debug)]
+#[derive(Debug, Diagnostic, Error)]
 pub enum Error {
-    #[error("Io error")]
-    #[diagnostic(code(std::io::Error))]
-    IoError(#[source] std::io::Error),
-    #[error(transparent)]
-    #[diagnostic(code(toml::de::Error))]
-    TomlDeError(#[from] toml::de::Error),
-    #[error(transparent)]
-    #[diagnostic(code(toml::ser::Error))]
-    TomlSerError(#[from] toml::ser::Error),
-    #[error(transparent)]
-    #[diagnostic(code(git2::Error))]
-    GitError(#[from] git2::Error),
-    #[error("Retrieving project path failed")]
-    #[diagnostic(code(fig::project_path_failed))]
-    ProjectPathFailed,
-    #[error("Path conversion failed")]
-    #[diagnostic(code(fig::path_conversion_fail))]
+    #[error("'{}' is not in any known namespace", .0.display())]
+    HasNoNamespace(PathBuf),
+    #[error("Failed to convert path to string")]
     PathConversionFail,
-    #[error("The file is not part of any known namespace")]
-    #[diagnostic(code(fig::namespace::no_namespace))]
-    HasNoNamespace,
+    #[error(transparent)]
+    RepoError(#[from] repository::Error),
 }
 
-#[derive(Error, Diagnostic, Debug)]
-#[error("uh oh")]
-pub struct ManyError<E: Diagnostic> {
-    #[related]
-    errors: Vec<E>,
+/// Panics on fail, use try_project_dirs if you want to catch errors.
+pub fn project_dirs() -> ProjectDirs {
+    ProjectDirs::from("", "", "fig")
+        .expect("Failed to find home directory, maybe your operating system is unsupported?")
 }
-
-impl<E: Diagnostic> ManyError<E> {
-    pub fn new() -> Self {
-        Self { errors: vec![] }
-    }
-
-    pub fn add(&mut self, err: E) {
-        self.errors.push(err);
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.errors.is_empty()
-    }
-
-    pub fn has_err(&self) -> bool {
-        !self.errors.is_empty()
-    }
-
-    pub fn to_result(self) -> Result<(), Self> {
-        if self.has_err() {
-            Err(self)
-        } else {
-            Ok(())
-        }
-    }
-}
-
-pub fn project_dirs() -> Result<ProjectDirs> {
-    Ok(ProjectDirs::from("", "", "fig").ok_or(Error::ProjectPathFailed)?)
-}
-
-pub fn strip_namespace(path: impl AsRef<Path>, file: impl AsRef<Path>) -> Option<PathBuf> {
-    let path = path.as_ref().to_str()?;
-    let file = file.as_ref().to_str()?.replace("\\\\?\\", "");
-    let path = PathBuf::from(file.strip_prefix(path)?.trim_start_matches("\\"));
-
-    Some(path)
+pub fn try_project_dirs() -> Option<ProjectDirs> {
+    ProjectDirs::from("", "", "fig")
 }
 
 pub fn determine_namespace(
     repository: &Repository,
     path: impl Into<PathBuf>,
-) -> Result<(String, PathBuf)> {
-    let mut path = path.into();
+) -> Result<Namespace, Error> {
+    let original_path: PathBuf = path.into();
+    let mut path = original_path.as_path();
+
     trace!(
         repository = as_display!(repository.dir.display());
         "Determining namespace of '{path}'",
         path=path.display()
     );
 
-    let original_path = path.clone();
-
-    while let Some(parent) = path.clone().parent() {
-        path = parent
-            .to_str()
-            .ok_or(Error::PathConversionFail)?
-            .trim_start_matches("\\\\?\\")
-            .into();
-        for (name, path_to_check) in repository.namespaces()? {
-            if path_to_check == parent {
-                return Ok((name, path_to_check));
+    while let Some(parent) = path.parent() {
+        path = parent;
+        for ns in repository.namespaces()? {
+            if ns.target == parent {
+                return Ok(ns);
             }
         }
     }
 
     error!("'{path}' has no namespace", path = original_path.display());
-    bail!(Error::HasNoNamespace)
+    Err(Error::HasNoNamespace(original_path.into()))
 }

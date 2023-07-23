@@ -1,11 +1,10 @@
-use std::{collections::BTreeMap, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 use log::debug;
-use miette::{bail, Diagnostic, Result};
+use miette::Diagnostic;
 use thiserror::Error;
 
-use self::Error::*;
-use crate::{template, Error::*, ManyError};
+use crate::namespace::Namespace;
 
 #[derive(Error, Diagnostic, Debug)]
 pub enum Error {
@@ -17,7 +16,14 @@ pub enum Error {
     #[help("Try `fig init` to intialise")]
     NotInitialised,
     #[error(transparent)]
-    SuperError(#[from] super::Error),
+    #[diagnostic(code(fig::io_error))]
+    IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    GitError(#[from] git2::Error),
+    #[error(transparent)]
+    TemplateError(#[from] crate::template::Error),
+    #[error("{}", .0)]
+    OpenError(#[source] Box<Self>, #[related] Vec<Self>),
 }
 
 pub struct Repository {
@@ -25,100 +31,56 @@ pub struct Repository {
     pub dir: PathBuf,
 }
 
-#[derive(clap::Args)]
-pub struct RepositoryInitOptions {
-    #[clap(short, long)]
-    force: bool,
-}
-
 impl Repository {
     /// Returns list of namespaces and the paths they point to.
     ///
     /// **Note:** path does not point to the directory the namespace is in, but instead where it should be deployed
-    pub fn namespaces(&self) -> Result<BTreeMap<String, PathBuf>> {
-        let mut out = BTreeMap::new();
-        for entry in Repository::dir()?.read_dir().map_err(IoError)? {
-            let entry = entry.map_err(IoError)?;
-            if entry.file_type().map_err(IoError)?.is_dir()
-                && entry.path().join("namespace.fig").exists()
-            {
-                let path =
-                    fs::read_to_string(entry.path().join("namespace.fig")).map_err(IoError)?;
-                out.insert(
-                    String::from(
-                        entry
-                            .file_name()
-                            .into_string()
-                            .map_err(|_| PathConversionFail)?,
-                    ),
-                    path.into(),
-                );
+    pub fn namespaces(&self) -> Result<Vec<Namespace>, Error> {
+        let mut out = vec![];
+        for entry in Repository::dir().read_dir()? {
+            let entry = entry?;
+            if entry.file_type()?.is_dir() && entry.path().join("namespace.fig").exists() {
+                let path = fs::read_to_string(entry.path().join("namespace.fig"))?;
+                let namespace = Namespace {
+                    target: PathBuf::from(path).canonicalize()?,
+                    location: entry.path().canonicalize()?,
+                };
+                out.push(namespace);
             }
         }
         Ok(out)
     }
 
-    pub fn dir() -> Result<PathBuf> {
-        Ok(crate::project_dirs()?.data_dir().to_path_buf())
-    }
-
-    /// Create a repository
-    pub fn init(options: RepositoryInitOptions) -> Result<Self> {
-        let dir = Repository::dir()?;
-
-        debug!("Creating repository at '{dir}'", dir = dir.display());
-
-        if dir.exists() && !options.force {
-            bail!(AlreadyInitialised)
-        }
-
-        fs::create_dir_all(&dir).map_err(IoError)?;
-
-        template::generate(&dir)?;
-
-        let dot_gitignore = "
-namespace.fig
-        ";
-        fs::write(dir.join(".gitignore"), dot_gitignore).map_err(IoError)?;
-
-        // Initialise git
-        let repository = git2::Repository::init(&dir).map_err(GitError)?;
-
-        Ok(Self {
-            git_repository: repository,
-            dir,
-        })
+    pub fn dir() -> PathBuf {
+        crate::project_dirs().data_dir().to_path_buf()
     }
 
     /// Open already existing repository
-    pub fn open() -> Result<Self> {
-        let mut many_error = ManyError::new();
-        let dir = Repository::dir()?;
+    pub fn open() -> Result<Self, Error> {
+        let mut warnings = vec![];
+        let dir = Repository::dir();
 
         debug!("Opening repository at '{dir}'", dir = dir.display());
 
         if !dir.exists() {
-            many_error.add(NotInitialised);
+            warnings.push(Error::NotInitialised);
         }
-        let repository = git2::Repository::open(&dir).map_err(GitError);
+        let repository = git2::Repository::open(&dir);
         if let Ok(repository) = repository {
             return Ok(Self {
                 git_repository: repository,
                 dir,
             });
         } else if let Err(e) = repository {
-            many_error.add(SuperError(e));
-            many_error.to_result()?;
+            return Err(Error::OpenError(Box::new(Error::from(e)), warnings));
         }
         unreachable!()
     }
 
-    pub fn push(&self) -> Result<()> {
+    pub fn push(&self) -> Result<(), Error> {
         self.git_repository
-            .find_remote("origin")
-            .map_err(GitError)?
-            .push(&["master"], None)
-            .map_err(GitError)?;
+            .find_remote("origin")?
+            .push(&["master"], None)?;
         Ok(())
     }
 }

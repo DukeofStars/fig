@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! create_dir_all {
     ($path:expr) => {{
         use log::{error, trace};
@@ -12,8 +13,8 @@ macro_rules! create_dir_all {
             })
     }};
 }
-pub(crate) use create_dir_all;
 
+#[macro_export]
 macro_rules! copy_file {
     ($from:expr, $to:expr) => {{
         use log::{error, trace};
@@ -36,15 +37,15 @@ macro_rules! copy_file {
             })
     }};
 }
-pub(crate) use copy_file;
 
+#[macro_export]
 macro_rules! copy_dir {
     ($from:expr, $to:expr) => {{
         // Files to be copied
         let mut files = vec![];
         // Iterator function
         fn iterate_dir(files: &mut Vec<PathBuf>, path: &PathBuf, depth_guard: u8) {
-            for file in log_utils::read_dir!(&path).expect("Failed to read directory") {
+            for file in ::fig::read_dir!(&path).expect("Failed to read directory") {
                 if let Ok(file) = file {
                     let path = file.path();
                     if path.is_file() {
@@ -63,7 +64,7 @@ macro_rules! copy_dir {
         let mut copied_files = vec![];
 
         for file in &files {
-            let stripped_path = if let Some(stripped_path) = strip_namespace($from, file) {
+            let stripped_path = if let Ok(stripped_path) = file.strip_prefix($from) {
                 stripped_path
             } else {
                 log::warn!(
@@ -78,11 +79,11 @@ macro_rules! copy_dir {
             if let Some(parent) = dst.parent() {
                 let parent = $to.join(parent);
                 if !parent.exists() {
-                    let _ = log_utils::create_dir_all!(&parent);
+                    let _ = ::fig::create_dir_all!(&parent);
                 }
             }
 
-            if let Ok(_) = log_utils::copy_file!(file, &dst) {
+            if let Ok(_) = ::fig::copy_file!(file, &dst) {
                 copied_files.push(dst);
             } else {
                 continue;
@@ -99,8 +100,8 @@ macro_rules! copy_dir {
         copied_files
     }};
 }
-pub(crate) use copy_dir;
 
+#[macro_export]
 macro_rules! read_dir {
     ($dir:expr) => {{
         $dir.read_dir().map_err(|e| {
@@ -109,4 +110,3 @@ macro_rules! read_dir {
         })
     }};
 }
-pub(crate) use read_dir;
