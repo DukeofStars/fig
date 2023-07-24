@@ -1,4 +1,5 @@
 use clap::Args;
+use color_eyre::eyre::Context;
 use color_eyre::Result;
 
 use crate::info::Info;
@@ -19,7 +20,7 @@ pub fn info(repo: &Repository, options: &InfoOptions) -> Result<()> {
     let info = Info::gather(repo)?;
 
     if options.json {
-        let json = serde_json::to_string_pretty(&info).expect("Failed to serialize Info");
+        let json = serde_json::to_string_pretty(&info).context("Failed to serialize Info")?;
         println!("{json}");
         return Ok(());
     }

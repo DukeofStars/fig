@@ -1,8 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use clap::Args;
-use color_eyre::eyre::eyre;
-use color_eyre::Result;
+use color_eyre::{eyre::Context, Result};
 
 use crate::repository::Repository;
 
@@ -20,16 +19,8 @@ pub fn deploy(repository: &Repository, options: &DeployOptions) -> Result<()> {
         let mut files = vec![];
         get_files(&namespace.location, &namespace.location, &mut files, 10)?;
         for file in files {
-            let file = file
-                .to_str()
-                .unwrap()
-                .trim_start_matches('\\')
-                .trim_start_matches('/');
-
-            let path = file;
-
-            let dest = namespace.target.join(path);
-            let src = namespace.location.join(path);
+            let dest = namespace.target.join(&file);
+            let src = namespace.location.join(&file);
 
             // Make sure dest directory exists
             if let Some(parent) = dest.parent() {
@@ -40,9 +31,13 @@ pub fn deploy(repository: &Repository, options: &DeployOptions) -> Result<()> {
             }
 
             if options.verbose {
-                println!("Copying '{}' to '{}'", src.display(), dest.display())
+                println!("Copying: '{}' to '{}'", src.display(), dest.display())
             }
-            crate::copy_file!(&src, &dest)?;
+            crate::copy_file!(&src, &dest).context(format!(
+                "Failed to copy '{}' to '{}'",
+                src.display(),
+                dest.display()
+            ))?;
         }
     }
 
@@ -70,16 +65,9 @@ fn get_files(
         return Ok(());
     }
     // Strip fig dir
-    let path = PathBuf::from(
-        entry
-            .to_str()
-            .ok_or_else(|| eyre!("Failed to convert path"))?
-            .trim_start_matches(
-                parent_dir
-                    .to_str()
-                    .ok_or_else(|| eyre!("Failed to convert path"))?,
-            ),
-    );
-    files.push(path);
+    let path = entry
+        .strip_prefix(parent_dir)
+        .context("Failed to strip path prefix")?;
+    files.push(path.to_path_buf());
     Ok(())
 }

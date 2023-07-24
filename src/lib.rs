@@ -1,11 +1,4 @@
-use std::path::PathBuf;
-
 use directories::ProjectDirs;
-use log::{as_display, error, trace};
-use thiserror::Error;
-
-use namespace::Namespace;
-use repository::Repository;
 
 pub mod info;
 mod log_utils;
@@ -16,43 +9,29 @@ pub mod template;
 #[cfg(feature = "commands")]
 pub mod commands;
 
+mod macros {
+    macro_rules! generate_wrap_error {
+        ($error_name:ident, $trait_name:ident) => {
+            trait $trait_name<T> {
+                fn wrap(self, msg: impl ToString) -> Result<T, $error_name>;
+            }
+
+            impl<T, E> $trait_name<T> for Result<T, E>
+            where
+                $error_name: From<E>,
+            {
+                fn wrap(self, msg: impl ToString) -> Result<T, $error_name> {
+                    self.map_err(|e| {
+                        $error_name::Wrapped(Box::new($error_name::from(e)), msg.to_string())
+                    })
+                }
+            }
+        };
+    }
+    pub(crate) use generate_wrap_error;
+}
+
 pub fn project_dirs() -> ProjectDirs {
     ProjectDirs::from("", "", "fig")
         .expect("Failed to find home directory, maybe your operating system is unsupported?")
-}
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("'{}' is not in any known namespace", .0.display())]
-    HasNoNamespace(PathBuf),
-    #[error("Failed to convert path to string")]
-    PathConversionFail,
-    #[error(transparent)]
-    RepoError(#[from] repository::Error),
-}
-
-pub fn determine_namespace(
-    repository: &Repository,
-    path: impl Into<PathBuf>,
-) -> Result<Namespace, Error> {
-    let original_path: PathBuf = path.into();
-    let mut path = original_path.as_path();
-
-    trace!(
-        repository = as_display!(repository.dir.display());
-        "Determining namespace of '{path}'",
-        path=path.display()
-    );
-
-    while let Some(parent) = path.parent() {
-        path = parent;
-        for ns in repository.namespaces()? {
-            if ns.target == parent {
-                return Ok(ns);
-            }
-        }
-    }
-
-    error!("'{path}' has no namespace", path = original_path.display());
-    Err(Error::HasNoNamespace(original_path))
 }

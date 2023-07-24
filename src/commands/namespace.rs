@@ -57,17 +57,21 @@ pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Res
             Ok(())
         }
         Command::Add { name, path } => {
-            let dir = repository.dir.join(&name);
+            let dir = repository.dir.join(name);
             let namespace_file = dir.join("namespace.fig");
 
             crate::create_dir_all!(&dir).context("Failed to create namespace directory")?;
 
-            let path = path.canonicalize().unwrap();
-            let path = path.to_str().unwrap().trim_start_matches("\\\\?\\");
+            let path = path.canonicalize()?;
 
-            std::fs::write(namespace_file, path).context("Failed to write to namespace file")?;
+            std::fs::write(namespace_file, path.display().to_string())
+                .context("Failed to write to namespace file")?;
 
-            println!("Added namespace {}: {}", name.blue(), path.bright_blue());
+            println!(
+                "Added namespace {}: {}",
+                name.blue(),
+                path.display().bright_blue()
+            );
 
             Ok(())
         }
@@ -84,7 +88,7 @@ pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Res
                 "The namespace {name} does not exist"
             );
 
-            let namespace_root = repository.dir.join(&name);
+            let namespace_root = repository.dir.join(name);
 
             print!("Are you sure you want to delete {name}? [y/N] ");
             let mut buf = String::new();
@@ -92,8 +96,7 @@ pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Res
                 .read_line(&mut buf)
                 .expect("Failed to read from stdin");
             let buf = buf.trim().to_lowercase();
-            if buf == "y" {
-            } else {
+            if buf != "y" {
                 return Ok(());
             }
 
