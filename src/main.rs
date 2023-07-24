@@ -25,11 +25,13 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     Add(AddOptions),
+    #[command(alias = "sh")]
     Cmd(CmdOptions),
     Deploy(DeployOptions),
     Info(InfoOptions),
     Init(InitOptions),
     List(ListOptions),
+    #[command(alias = "ns")]
     Namespace(NamespaceOptions),
     /// Completely delete your configuration repository.
     Purge,
