@@ -6,6 +6,7 @@ use color_eyre::Result;
 
 use crate::repository::Repository;
 
+/// Deploy files from the configuration repository to your system.
 #[derive(Debug, Args)]
 pub struct DeployOptions {
     #[clap(short, long)]

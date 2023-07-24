@@ -1,13 +1,14 @@
 use std::{collections::HashMap, path::PathBuf};
 
-use crate::repository::Repository;
 use clap::Args;
 use color_eyre::eyre::Context;
 use color_eyre::Result;
 use owo_colors::OwoColorize;
 
+use crate::repository::Repository;
+
+/// Print all files that are in the configuration repository.
 #[derive(Debug, Args)]
-/// Print all files that are tracked by fig.
 pub struct ListOptions {
     #[clap(short, long)]
     tree: bool,

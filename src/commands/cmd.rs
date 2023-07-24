@@ -1,9 +1,11 @@
 use std::process::Command;
 
-use crate::repository::Repository;
 use clap::Args;
 use color_eyre::Result;
 
+use crate::repository::Repository;
+
+/// Run a command in the configuration repository directory.
 #[derive(Debug, Args)]
 pub struct CmdOptions {
     command: String,

@@ -7,6 +7,7 @@ use log::debug;
 use crate::repository::Repository;
 use crate::template;
 
+/// Initialise a configuration repository.
 #[derive(Debug, Args)]
 pub struct InitOptions {
     /// Ignore repositories in the location already

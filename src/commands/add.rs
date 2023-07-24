@@ -1,10 +1,12 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 use color_eyre::Result;
 use color_eyre::{eyre::eyre, Section};
-use std::path::PathBuf;
 
 use crate::{determine_namespace, repository::Repository};
 
+/// Add a file to the configuration repository.
 #[derive(Parser, Debug)]
 pub struct AddOptions {
     files: Vec<PathBuf>,

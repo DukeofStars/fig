@@ -7,6 +7,7 @@ use owo_colors::OwoColorize;
 
 use crate::repository::Repository;
 
+/// Manage your configuration namespaces
 #[derive(Debug, Args)]
 pub struct NamespaceOptions {
     #[clap(subcommand)]
@@ -15,18 +16,19 @@ pub struct NamespaceOptions {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// List your configuration namespaces.
     List {
         #[clap(long)]
         json: bool,
     },
+    /// Create a new namespace.
     Add {
         name: String,
         #[clap(default_value = ".")]
         path: PathBuf,
     },
-    Remove {
-        name: String,
-    },
+    /// Remove a namespace.
+    Remove { name: String },
 }
 
 pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Result<()> {

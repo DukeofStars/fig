@@ -15,6 +15,7 @@ use crate::commands::{
 
 mod commands;
 
+/// A powerful and cross-platform configuration manager.
 #[derive(Debug, Parser)]
 struct Cli {
     #[command(subcommand)]
@@ -30,6 +31,7 @@ enum Command {
     Init(InitOptions),
     List(ListOptions),
     Namespace(NamespaceOptions),
+    /// Completely delete your configuration repository.
     Purge,
 }
 

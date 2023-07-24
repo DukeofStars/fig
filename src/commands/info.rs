@@ -4,6 +4,7 @@ use color_eyre::Result;
 use crate::info::Info;
 use crate::repository::Repository;
 
+/// Get information about the configuration repository.
 #[derive(Debug, Args)]
 pub struct InfoOptions {
     #[clap(long)]
