@@ -1,13 +1,16 @@
+use std::fs::File;
+
 use clap::{command, Parser, Subcommand};
+use color_eyre::eyre::Context;
 use color_eyre::Result;
+use log::LevelFilter;
 
-pub use fig::*;
 use fig::repository::Repository;
+pub use fig::*;
 
-use crate::{
-    commands::add::AddOptions, commands::cmd::CmdOptions, commands::deploy::DeployOptions,
-    commands::info::InfoOptions, commands::init::InitOptions, commands::list::ListOptions,
-    commands::namespace::NamespaceOptions,
+use crate::commands::{
+    add::AddOptions, cmd::CmdOptions, deploy::DeployOptions, info::InfoOptions, init::InitOptions,
+    list::ListOptions, namespace::NamespaceOptions,
 };
 
 mod commands;
@@ -33,12 +36,23 @@ enum Command {
 fn main() -> Result<()> {
     color_eyre::install()?;
 
+    // Initialise logging
+    let log_path = project_dirs().data_local_dir().join("fig-log.txt");
+    let file = File::options()
+        .create(true)
+        .write(true)
+        .open(log_path)
+        .context("Failed to open log file")?;
+    let mut config_builder = simplelog::ConfigBuilder::new();
+    simplelog::WriteLogger::init(LevelFilter::Off, config_builder.build(), file)
+        .context("Failed to initialise logger")?;
+
     let cli = Cli::parse_from(wild::args());
 
     let repository = if let Command::Init(options) = &cli.command {
         commands::init::init(options, project_dirs().data_dir().to_path_buf())?
     } else {
-        Repository::open(project_dirs().data_dir().to_path_buf())?
+        Repository::open(project_dirs().data_dir())?
     };
 
     match &cli.command {

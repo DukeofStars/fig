@@ -7,11 +7,11 @@ use thiserror::Error;
 use namespace::Namespace;
 use repository::Repository;
 
+pub mod info;
 mod log_utils;
 pub mod namespace;
 pub mod repository;
 pub mod template;
-pub mod info;
 
 #[cfg(feature = "commands")]
 pub mod commands;

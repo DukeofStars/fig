@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use clap::{Args, Subcommand};
-use color_eyre::eyre::{Context, ensure};
+use color_eyre::eyre::{ensure, Context};
 use color_eyre::Result;
 use owo_colors::OwoColorize;
 
@@ -90,7 +90,8 @@ pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Res
                 .read_line(&mut buf)
                 .expect("Failed to read from stdin");
             let buf = buf.trim().to_lowercase();
-            if buf == "y" {} else {
+            if buf == "y" {
+            } else {
                 return Ok(());
             }
 

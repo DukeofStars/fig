@@ -17,3 +17,4 @@ serde_json = { version = "1.0" }
 thiserror = { version = "1.0" }
 wild = { version = "2.1.0" }
 owo-colors = { version = "3.5.0" }
+simplelog = { version = "0.12.1" }

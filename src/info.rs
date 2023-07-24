@@ -1,9 +1,8 @@
-use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use crate::namespace::Namespace;
 use crate::repository;
 use crate::repository::Repository;
-
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Info {
