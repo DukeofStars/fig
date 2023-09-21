@@ -1,8 +1,7 @@
 use std::fs::File;
 
 use clap::{command, Parser, Subcommand};
-use color_eyre::eyre::Context;
-use color_eyre::Result;
+use color_eyre::{eyre::Context, Result};
 use log::LevelFilter;
 
 use fig::repository::Repository;
