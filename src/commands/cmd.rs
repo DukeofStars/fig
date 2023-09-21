@@ -9,10 +9,12 @@ use crate::repository::Repository;
 #[derive(Debug, Args)]
 pub struct CmdOptions {
     command: String,
+    args: Vec<String>,
 }
 
 pub fn cmd(repository: &Repository, options: &CmdOptions) -> Result<()> {
     Command::new(&options.command)
+        .args(&options.args)
         .current_dir(&repository.dir)
         .status()
         .context("Failed to spawn child process")?;
