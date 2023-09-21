@@ -11,7 +11,7 @@ use crate::repository::Repository;
 #[derive(Debug, Args)]
 pub struct NamespaceOptions {
     #[clap(subcommand)]
-    subcommand: Command,
+    pub subcommand: Command,
 }
 
 #[derive(Debug, Subcommand)]

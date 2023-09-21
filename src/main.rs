@@ -7,6 +7,7 @@ use log::LevelFilter;
 use fig::repository::Repository;
 pub use fig::*;
 
+use crate::commands::status::StatusOptions;
 use crate::commands::{
     add::AddOptions, cmd::CmdOptions, deploy::DeployOptions, info::InfoOptions, init::InitOptions,
     list::ListOptions, namespace::NamespaceOptions,
@@ -34,6 +35,7 @@ enum Command {
     Namespace(NamespaceOptions),
     /// Completely delete your configuration repository.
     Purge,
+    Status(StatusOptions),
 }
 
 fn main() -> Result<()> {
@@ -79,6 +81,9 @@ fn main() -> Result<()> {
         }
         Command::Purge => {
             commands::purge::purge(&repository)?;
+        }
+        Command::Status(options) => {
+            commands::status::status(&repository, options)?;
         }
         Command::Init(_) => {}
     }
