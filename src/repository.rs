@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use log::debug;
 use thiserror::Error;
-use url::Url;
 
 use crate::macros::generate_wrap_error;
 use crate::namespace::Namespace;
@@ -101,14 +100,26 @@ impl RepositoryBuilder {
                     path,
                 })
             }
-            RepositoryBuilder::Opened(_) => {
-                return Err(Error::AlreadyInitialised);
-            }
+            RepositoryBuilder::Opened(_) => Err(Error::AlreadyInitialised),
         }
     }
 
-    pub fn clone(url: impl AsRef<Url>) -> Result<Repository, Error> {
-        todo!("Haven't implemented clone yet")
+    pub fn clone(self, url: &str) -> Result<Repository, Error> {
+        match self {
+            RepositoryBuilder::Unopened(path) => {
+                let git_repository = git2::Repository::clone_recurse(url, &path)?;
+                // Fill in namespaces
+                template::generate(&path)?;
+                let repository = Repository {
+                    git_repository,
+                    path,
+                };
+
+                Ok(repository)
+            }
+            RepositoryBuilder::Opened(_) => Err(Error::AlreadyInitialised)
+                .wrap("Cannot clone into repository that already exists"),
+        }
     }
 }
 
@@ -141,6 +152,22 @@ impl Repository {
             }
         }
         Ok(out)
+    }
+
+    /// List of all directories in repository that do not have a namespace.fig file.
+    pub fn floating_namespaces(&self) -> Result<Vec<String>, Error> {
+        let mut floating_namespaces = Vec::new();
+        for entry in self.path().read_dir()?.flatten() {
+            if entry.file_type()?.is_dir() && !entry.path().join("namespace.fig").exists() {
+                let file_name = entry.file_name();
+                // Ignore .git
+                if file_name == ".git" {
+                    continue;
+                }
+                floating_namespaces.push(file_name.to_str().unwrap().to_string());
+            }
+        }
+        Ok(floating_namespaces)
     }
 
     pub fn push(&self) -> Result<(), Error> {

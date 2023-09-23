@@ -13,6 +13,25 @@ macro_rules! create_dir_all {
             })
     }};
 }
+#[macro_export]
+macro_rules! create_dir_all_if_not_exists {
+    ($path:expr) => {{
+        use log::{error, trace};
+        if !$path.exists() {
+            std::fs::create_dir_all($path)
+                .map_err(|e| {
+                    error!("Failed to create directory '{dir}'", dir = $path.display());
+                    e
+                })
+                .map(|a| {
+                    trace!("Created directory '{path}'", path = $path.display());
+                    a
+                })
+        } else {
+            Ok(())
+        }
+    }};
+}
 
 #[macro_export]
 macro_rules! remove_dir_all {

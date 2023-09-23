@@ -10,7 +10,20 @@ pub struct CloneOptions {
 }
 
 pub fn clone(repo_builder: RepositoryBuilder, options: &CloneOptions) -> Result<()> {
-    RepositoryBuilder::clone(&options.url)?;
+    // Perform initial clone.
+    let repository = repo_builder.clone(options.url.as_str())?;
+    println!("Repository cloned successfully");
+
+    // Any user-made namespaces must be added manually.
+    let floating_namespaces = repository.floating_namespaces()?;
+    if !floating_namespaces.is_empty() {
+        println!();
+        println!("The following namespaces could not be auto-generated, and must be set manually.");
+        println!("To do this, run `fig namespace set <namespace> <path>`");
+        for ns in repository.floating_namespaces()? {
+            println!("\t{ns}");
+        }
+    }
 
     Ok(())
 }

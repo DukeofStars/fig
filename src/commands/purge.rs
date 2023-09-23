@@ -7,7 +7,7 @@ pub fn purge(repo_builder: RepositoryBuilder) -> Result<()> {
         .open()
         .context("Cannot purge repository if it doesn't exist!")?;
 
-    std::fs::remove_dir_all(&repository.path()).context("Failed to remove directory")?;
+    std::fs::remove_dir_all(repository.path()).context("Failed to remove directory")?;
 
     Ok(())
 }

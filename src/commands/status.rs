@@ -22,14 +22,7 @@ pub fn status(repo_builder: RepositoryBuilder, _options: &StatusOptions) -> colo
     println!("initialised: true");
     println!("location: {}", repository.path().display());
 
-    // Namespaces that do not have a target.
-    let mut floating_namespaces = Vec::new();
-    for entry in repository.path().read_dir()?.flatten() {
-        if entry.file_type()?.is_dir() && !entry.path().join("namespace.fig").exists() {
-            let file_name = entry.file_name();
-            floating_namespaces.push(file_name.to_str().unwrap().to_string());
-        }
-    }
+    let floating_namespaces = repository.floating_namespaces()?;
 
     println!("== Namespaces {} ==", repository.namespaces()?.len());
     let repo_builder = repository.into_builder();
@@ -40,9 +33,11 @@ pub fn status(repo_builder: RepositoryBuilder, _options: &StatusOptions) -> colo
         },
     )?;
 
-    println!("== Floating namespaces {} ==", floating_namespaces.len());
-    for ns in floating_namespaces {
-        println!("{ns}");
+    if !floating_namespaces.is_empty() {
+        println!("== Floating namespaces {} ==", floating_namespaces.len());
+        for ns in floating_namespaces {
+            println!("{ns}");
+        }
     }
 
     Ok(())

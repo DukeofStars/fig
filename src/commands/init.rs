@@ -19,7 +19,7 @@ pub struct InitOptions {
 
 pub fn init(repo_builder: RepositoryBuilder, options: &InitOptions) -> Result<()> {
     if options.force && repo_builder.path().exists() {
-        std::fs::remove_dir_all(&repo_builder.path()).context("Failed to remove directory")?;
+        std::fs::remove_dir_all(repo_builder.path()).context("Failed to remove directory")?;
     }
     let _ = repo_builder.init()?;
     Ok(())

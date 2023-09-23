@@ -7,6 +7,7 @@ use log::LevelFilter;
 use fig::repository::RepositoryBuilder;
 pub use fig::*;
 
+use crate::commands::clone::CloneOptions;
 use crate::commands::status::StatusOptions;
 use crate::commands::{
     add::AddOptions, cmd::CmdOptions, deploy::DeployOptions, info::InfoOptions, init::InitOptions,
@@ -25,6 +26,7 @@ struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     Add(AddOptions),
+    Clone(CloneOptions),
     #[command(alias = "sh")]
     Cmd(CmdOptions),
     Deploy(DeployOptions),
@@ -59,6 +61,9 @@ fn main() -> Result<()> {
     match &cli.command {
         Command::Add(options) => {
             commands::add::add(repo_builder, options)?;
+        }
+        Command::Clone(options) => {
+            commands::clone::clone(repo_builder, options)?;
         }
         Command::Cmd(options) => {
             commands::cmd::cmd(repo_builder, options)?;

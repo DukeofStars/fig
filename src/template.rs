@@ -19,35 +19,35 @@ pub fn generate(path: impl AsRef<Path>) -> Result<PathBuf, Error> {
     let base_dirs = directories::BaseDirs::new().ok_or(Error::NoBaseDirs)?;
 
     // /home
-    crate::create_dir_all!(path.join("home"))?;
+    crate::create_dir_all_if_not_exists!(path.join("home"))?;
     std::fs::write(
         path.join("home").join("namespace.fig"),
         base_dirs.home_dir().display().to_string(),
     )
     .map_err(Error::WritingNamespaceFig)?;
     // /config
-    crate::create_dir_all!(path.join("config"))?;
+    crate::create_dir_all_if_not_exists!(path.join("config"))?;
     std::fs::write(
         path.join("config").join("namespace.fig"),
         base_dirs.config_dir().display().to_string(),
     )
     .map_err(Error::WritingNamespaceFig)?;
     // /data
-    crate::create_dir_all!(path.join("data"))?;
+    crate::create_dir_all_if_not_exists!(path.join("data"))?;
     std::fs::write(
         path.join("data").join("namespace.fig"),
         base_dirs.data_dir().display().to_string(),
     )
     .map_err(Error::WritingNamespaceFig)?;
     // /data-local
-    crate::create_dir_all!(path.join("data-local"))?;
+    crate::create_dir_all_if_not_exists!(path.join("data-local"))?;
     std::fs::write(
         path.join("data-local").join("namespace.fig"),
         base_dirs.data_local_dir().display().to_string(),
     )
     .map_err(Error::WritingNamespaceFig)?;
     // /preferences
-    crate::create_dir_all!(path.join("preferences"))?;
+    crate::create_dir_all_if_not_exists!(path.join("preferences"))?;
     std::fs::write(
         path.join("preferences").join("namespace.fig"),
         base_dirs.preference_dir().display().to_string(),
