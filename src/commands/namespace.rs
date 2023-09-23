@@ -1,8 +1,10 @@
+use std::io::Write;
 use std::path::PathBuf;
 
 use clap::{Args, Subcommand};
 use color_eyre::eyre::{ensure, Context};
 use color_eyre::Result;
+use log::info;
 use owo_colors::OwoColorize;
 
 use crate::repository::Repository;
@@ -28,6 +30,7 @@ pub enum Command {
         path: PathBuf,
     },
     /// Remove a namespace.
+    #[clap(alias = "rm")]
     Remove { name: String },
 }
 
@@ -67,11 +70,7 @@ pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Res
             std::fs::write(namespace_file, path.display().to_string())
                 .context("Failed to write to namespace file")?;
 
-            println!(
-                "Added namespace {}: {}",
-                name.blue(),
-                path.display().bright_blue()
-            );
+            println!("Added namespace {}: {}", name, path.display());
 
             Ok(())
         }
@@ -88,15 +87,18 @@ pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Res
                 "The namespace {name} does not exist"
             );
 
+            info!("Removing namespace: {}", name);
+
             let namespace_root = repository.dir.join(name);
 
             print!("Are you sure you want to delete {name}? [y/N] ");
+            std::io::stdout().flush()?;
             let mut buf = String::new();
             std::io::stdin()
                 .read_line(&mut buf)
                 .expect("Failed to read from stdin");
             let buf = buf.trim().to_lowercase();
-            if buf != "y" {
+            if buf != "y" && buf != "yes" {
                 return Ok(());
             }
 
