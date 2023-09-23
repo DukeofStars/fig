@@ -7,11 +7,9 @@ use log::LevelFilter;
 use fig::repository::RepositoryBuilder;
 pub use fig::*;
 
-use crate::commands::clone::CloneOptions;
-use crate::commands::status::StatusOptions;
 use crate::commands::{
-    add::AddOptions, cmd::CmdOptions, deploy::DeployOptions, info::InfoOptions, init::InitOptions,
-    list::ListOptions, namespace::NamespaceOptions,
+    add::AddOptions, clone::CloneOptions, cmd::CmdOptions, deploy::DeployOptions,
+    info::InfoOptions, init::InitOptions, list::ListOptions, namespace::NamespaceOptions,
 };
 
 mod commands;
@@ -30,6 +28,8 @@ enum Command {
     #[command(alias = "sh")]
     Cmd(CmdOptions),
     Deploy(DeployOptions),
+    /// Display information about your configuratino repository.
+    #[clap(alias = "status")]
     Info(InfoOptions),
     Init(InitOptions),
     List(ListOptions),
@@ -37,7 +37,6 @@ enum Command {
     Namespace(NamespaceOptions),
     /// Completely delete your configuration repository.
     Purge,
-    Status(StatusOptions),
 }
 
 fn main() -> Result<()> {
@@ -82,9 +81,6 @@ fn main() -> Result<()> {
         }
         Command::Purge => {
             commands::purge::purge(repo_builder)?;
-        }
-        Command::Status(options) => {
-            commands::status::status(repo_builder, options)?;
         }
         Command::Init(options) => {
             commands::init::init(repo_builder, options)?;

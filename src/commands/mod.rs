@@ -7,4 +7,3 @@ pub mod init;
 pub mod list;
 pub mod namespace;
 pub mod purge;
-pub mod status;
