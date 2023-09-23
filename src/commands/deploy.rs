@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use clap::Args;
 use color_eyre::{eyre::Context, Result};
 
-use crate::repository::Repository;
+use fig::repository::RepositoryBuilder;
 
 /// Deploy files from the configuration repository to your system.
 #[derive(Debug, Args)]
@@ -12,7 +12,9 @@ pub struct DeployOptions {
     verbose: bool,
 }
 
-pub fn deploy(repository: &Repository, options: &DeployOptions) -> Result<()> {
+pub fn deploy(repo_builder: RepositoryBuilder, options: &DeployOptions) -> Result<()> {
+    let repository = repo_builder.open()?;
+
     let namespaces = repository.namespaces()?;
 
     for namespace in &namespaces {

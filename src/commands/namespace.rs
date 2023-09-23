@@ -7,7 +7,7 @@ use color_eyre::Result;
 use log::info;
 use owo_colors::OwoColorize;
 
-use crate::repository::Repository;
+use fig::repository::RepositoryBuilder;
 
 /// Manage your configuration namespaces
 #[derive(Debug, Args)]
@@ -34,7 +34,9 @@ pub enum Command {
     Remove { name: String },
 }
 
-pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Result<()> {
+pub fn namespace_cli(repo_builder: RepositoryBuilder, options: &NamespaceOptions) -> Result<()> {
+    let repository = repo_builder.open()?;
+
     match &options.subcommand {
         Command::List { json } => {
             if *json {
@@ -60,7 +62,7 @@ pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Res
             Ok(())
         }
         Command::Add { name, path } => {
-            let dir = repository.dir.join(name);
+            let dir = repository.path().join(name);
             let namespace_file = dir.join("namespace.fig");
 
             crate::create_dir_all!(&dir).context("Failed to create namespace directory")?;
@@ -89,7 +91,7 @@ pub fn namespace_cli(repository: &Repository, options: &NamespaceOptions) -> Res
 
             info!("Removing namespace: {}", name);
 
-            let namespace_root = repository.dir.join(name);
+            let namespace_root = repository.path().join(name);
 
             print!("Are you sure you want to delete {name}? [y/N] ");
             std::io::stdout().flush()?;

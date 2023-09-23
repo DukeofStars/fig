@@ -1,4 +1,5 @@
 pub mod add;
+pub mod clone;
 pub mod cmd;
 pub mod deploy;
 pub mod info;

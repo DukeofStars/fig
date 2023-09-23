@@ -6,9 +6,6 @@ pub mod namespace;
 pub mod repository;
 pub mod template;
 
-#[cfg(feature = "commands")]
-pub mod commands;
-
 mod macros {
     macro_rules! generate_wrap_error {
         ($error_name:ident, $trait_name:ident) => {

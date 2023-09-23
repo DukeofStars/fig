@@ -2,8 +2,9 @@ use clap::Args;
 use color_eyre::eyre::Context;
 use color_eyre::Result;
 
+use fig::repository::RepositoryBuilder;
+
 use crate::info::Info;
-use crate::repository::Repository;
 
 /// Get information about the configuration repository.
 #[derive(Debug, Args)]
@@ -16,8 +17,10 @@ pub struct InfoOptions {
     json: bool,
 }
 
-pub fn info(repo: &Repository, options: &InfoOptions) -> Result<()> {
-    let info = Info::gather(repo)?;
+pub fn info(repo_builder: RepositoryBuilder, options: &InfoOptions) -> Result<()> {
+    let repository = repo_builder.open()?;
+
+    let info = Info::gather(&repository)?;
 
     if options.json {
         let json = serde_json::to_string_pretty(&info).context("Failed to serialize Info")?;

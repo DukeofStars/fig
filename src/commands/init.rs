@@ -1,13 +1,10 @@
 use std::path::PathBuf;
 
 use clap::Args;
-use color_eyre::{
-    eyre::{bail, Context},
-    Result,
-};
-use log::debug;
+use color_eyre::eyre::Context;
+use color_eyre::Result;
 
-use crate::{repository::Repository, template};
+use fig::repository::RepositoryBuilder;
 
 /// Initialise a configuration repository.
 #[derive(Debug, Args)]
@@ -20,31 +17,10 @@ pub struct InitOptions {
     dir: Option<PathBuf>,
 }
 
-pub fn init(options: &InitOptions, default_repo_dir: PathBuf) -> Result<Repository> {
-    let dir = options.dir.as_ref().unwrap_or(&default_repo_dir);
-
-    debug!("Creating repository at '{dir}'", dir = dir.display());
-
-    if dir.exists() && !options.force {
-        bail!("Already initialised");
+pub fn init(repo_builder: RepositoryBuilder, options: &InitOptions) -> Result<()> {
+    if options.force && repo_builder.path().exists() {
+        std::fs::remove_dir_all(&repo_builder.path()).context("Failed to remove directory")?;
     }
-
-    crate::create_dir_all!(dir)
-        .context(format!("Failed to create directory '{}'", dir.display()))?;
-
-    template::generate(dir)?;
-
-    let dot_gitignore = "
-namespace.fig
-    ";
-    let dot_gitignore_path = dir.join("../../.gitignore");
-    std::fs::write(&dot_gitignore_path, dot_gitignore).context(format!(
-        "Failed to write to {}",
-        dot_gitignore_path.display()
-    ))?;
-
-    // Initialise git
-    let _ = git2::Repository::init(dir)?;
-
-    Ok(Repository::open(dir)?)
+    let _ = repo_builder.init()?;
+    Ok(())
 }

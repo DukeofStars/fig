@@ -4,7 +4,9 @@ use clap::Parser;
 use color_eyre::Result;
 use color_eyre::{eyre::eyre, Section};
 
-use crate::{namespace::determine_namespace, repository::Repository};
+use fig::repository::RepositoryBuilder;
+
+use crate::namespace::determine_namespace;
 
 /// Add a file to the configuration repository.
 #[derive(Parser, Debug)]
@@ -14,7 +16,9 @@ pub struct AddOptions {
     mock: bool,
 }
 
-pub fn add(repository: &Repository, options: &AddOptions) -> Result<()> {
+pub fn add(repo_builder: RepositoryBuilder, options: &AddOptions) -> Result<()> {
+    let repository = repo_builder.open()?;
+
     let mut io_errors: Vec<std::io::Error> = vec![];
     let mut prefix_errors: Vec<std::path::StripPrefixError> = vec![];
     for file in &options.files {
@@ -25,7 +29,7 @@ pub fn add(repository: &Repository, options: &AddOptions) -> Result<()> {
         }
         let file = file.unwrap();
 
-        let namespace = determine_namespace(repository, &file)?;
+        let namespace = determine_namespace(&repository, &file)?;
 
         let new_path = namespace
             .location

@@ -10,11 +10,12 @@ pub struct Info {
     pub repository_dir: PathBuf,
     pub log_dir: PathBuf,
 }
+
 impl Info {
     pub fn gather(repo: &Repository) -> Result<Self, repository::Error> {
         Ok(Self {
             namespaces: { repo.namespaces()? },
-            repository_dir: { repo.dir.clone() },
+            repository_dir: { repo.path().clone() },
             log_dir: { crate::project_dirs().data_local_dir().join("fig-log.txt") },
         })
     }

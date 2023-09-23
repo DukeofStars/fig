@@ -4,7 +4,7 @@ use clap::{command, Parser, Subcommand};
 use color_eyre::{eyre::Context, Result};
 use log::LevelFilter;
 
-use fig::repository::Repository;
+use fig::repository::RepositoryBuilder;
 pub use fig::*;
 
 use crate::commands::status::StatusOptions;
@@ -54,38 +54,36 @@ fn main() -> Result<()> {
 
     let cli = Cli::parse_from(wild::args());
 
-    let repository = if let Command::Init(options) = &cli.command {
-        commands::init::init(options, project_dirs().data_dir().to_path_buf())?
-    } else {
-        Repository::open(project_dirs().data_dir())?
-    };
+    let repo_builder = RepositoryBuilder::new(project_dirs().data_dir().to_path_buf());
 
     match &cli.command {
         Command::Add(options) => {
-            commands::add::add(&repository, options)?;
+            commands::add::add(repo_builder, options)?;
         }
         Command::Cmd(options) => {
-            commands::cmd::cmd(&repository, options)?;
+            commands::cmd::cmd(repo_builder, options)?;
         }
         Command::Deploy(options) => {
-            commands::deploy::deploy(&repository, options)?;
+            commands::deploy::deploy(repo_builder, options)?;
         }
         Command::Info(options) => {
-            commands::info::info(&repository, options)?;
+            commands::info::info(repo_builder, options)?;
         }
         Command::List(options) => {
-            commands::list::list(&repository, options)?;
+            commands::list::list(repo_builder, options)?;
         }
         Command::Namespace(options) => {
-            commands::namespace::namespace_cli(&repository, options)?;
+            commands::namespace::namespace_cli(repo_builder, options)?;
         }
         Command::Purge => {
-            commands::purge::purge(&repository)?;
+            commands::purge::purge(repo_builder)?;
         }
         Command::Status(options) => {
-            commands::status::status(&repository, options)?;
+            commands::status::status(repo_builder, options)?;
         }
-        Command::Init(_) => {}
+        Command::Init(options) => {
+            commands::init::init(repo_builder, options)?;
+        }
     }
 
     Ok(())

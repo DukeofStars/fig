@@ -1,11 +1,12 @@
-use std::path::Path;
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
-use crate::macros::generate_wrap_error;
 use log::debug;
 use thiserror::Error;
+use url::Url;
 
+use crate::macros::generate_wrap_error;
 use crate::namespace::Namespace;
+use crate::template;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -21,26 +22,117 @@ pub enum Error {
     TemplateError(#[from] crate::template::Error),
     #[error("{}", .0)]
     OpenError(#[source] Box<Self>, Vec<Self>),
+
+    // This must exist for generate_wrap_error!() to work.
     #[error("{}", .1)]
     Wrapped(#[source] Box<Self>, String),
 }
 generate_wrap_error!(Error, Wrap);
 
+/// Create or initialise a repository.
+pub enum RepositoryBuilder {
+    Unopened(PathBuf),
+    Opened(Repository),
+}
+
+impl RepositoryBuilder {
+    pub fn path(&self) -> &PathBuf {
+        match self {
+            RepositoryBuilder::Unopened(path) => path,
+            RepositoryBuilder::Opened(repository) => repository.path(),
+        }
+    }
+
+    /// Create a new repository builder.
+    pub fn new(path: PathBuf) -> RepositoryBuilder {
+        RepositoryBuilder::Unopened(path)
+    }
+
+    /// Open already existing repository
+    pub fn open(self) -> Result<Repository, Error> {
+        match self {
+            RepositoryBuilder::Unopened(path) => {
+                debug!("Opening repository at '{dir}'", dir = path.display());
+                if !path.exists() {
+                    return Err(Error::NotInitialised);
+                }
+                let repository = git2::Repository::open(&path);
+                match repository {
+                    Ok(repository) => {
+                        Ok(Repository {
+                            git_repository: repository,
+                            path: path.to_path_buf(),
+                        })
+                    }
+                    Err(git_error) => {
+                        Err(git_error).wrap("Failed to open git repository, maybe it isn't initialised. You can initialise it with `fig cmd -- git init`")?
+                    }
+                }
+            }
+            RepositoryBuilder::Opened(repository) => Ok(repository),
+        }
+    }
+    pub fn init(self) -> Result<Repository, Error> {
+        match self {
+            RepositoryBuilder::Unopened(path) => {
+                debug!("Creating repository at '{}'", path.display());
+
+                if path.exists() {
+                    return Err(Error::AlreadyInitialised);
+                }
+
+                crate::create_dir_all!(&path)
+                    .wrap(format!("Failed to create directory '{}'", path.display()))?;
+
+                template::generate(&path)?;
+
+                let dot_gitignore = "namespace.fig";
+                let dot_gitignore_path = path.join(".gitignore");
+                std::fs::write(&dot_gitignore_path, dot_gitignore).wrap(format!(
+                    "Failed to write to {}",
+                    dot_gitignore_path.display()
+                ))?;
+
+                // Initialise git
+                let git_repository = git2::Repository::init(&path)?;
+
+                Ok(Repository {
+                    git_repository,
+                    path,
+                })
+            }
+            RepositoryBuilder::Opened(_) => {
+                return Err(Error::AlreadyInitialised);
+            }
+        }
+    }
+
+    pub fn clone(url: impl AsRef<Url>) -> Result<Repository, Error> {
+        todo!("Haven't implemented clone yet")
+    }
+}
+
 pub struct Repository {
     git_repository: git2::Repository,
-    pub dir: PathBuf,
+    path: PathBuf,
 }
 
 impl Repository {
+    pub fn into_builder(self) -> RepositoryBuilder {
+        RepositoryBuilder::Opened(self)
+    }
+
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
     /// Returns list of namespaces and the paths they point to.
-    ///
-    /// **Note:** path does not point to the directory the namespace is in, but instead where it should be deployed
     pub fn namespaces(&self) -> Result<Vec<Namespace>, Error> {
         let mut out = vec![];
-        for entry in self.dir.read_dir().wrap("Failed to read directory")? {
+        for entry in self.path.read_dir().wrap("Failed to read directory")? {
             let entry = entry?;
             if entry.file_type()?.is_dir() && entry.path().join("namespace.fig").exists() {
-                let path = fs::read_to_string(entry.path().join("namespace.fig"))?;
+                let path = std::fs::read_to_string(entry.path().join("namespace.fig"))?;
                 let namespace = Namespace {
                     target: PathBuf::from(path).canonicalize()?,
                     location: entry.path().canonicalize()?,
@@ -49,38 +141,6 @@ impl Repository {
             }
         }
         Ok(out)
-    }
-
-    /// Open already existing repository
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, Error> {
-        let path = path.as_ref();
-
-        debug!("Opening repository at '{dir}'", dir = path.display());
-
-        if !path.exists() {
-            return Err(Error::NotInitialised);
-        }
-        let repository = git2::Repository::open(path);
-        match repository {
-            Ok(repository) => {
-                Ok(Self {
-                    git_repository: repository,
-                    dir: path.to_path_buf(),
-                })
-            }
-            Err(git_error) => {
-                Err(git_error).wrap("Failed to open git repository, maybe it isn't initialised. You can initialise it with `fig cmd -- git init`")?
-            }
-        }
-        // if let Ok(repository) = repository {
-        //     return Ok(Self {
-        //         git_repository: repository,
-        //         dir: path.to_path_buf(),
-        //     });
-        // } else if let Err(e) = repository {
-        //     return Err(Error::OpenError(Box::new(Error::from(e)), warnings));
-        // }
-        // unreachable!()
     }
 
     pub fn push(&self) -> Result<(), Error> {

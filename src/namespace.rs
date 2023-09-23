@@ -1,9 +1,10 @@
-use log::{as_display, error, trace};
-use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use crate::repository::Repository;
+use log::{as_display, error, trace};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+use crate::repository::Repository;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -62,7 +63,7 @@ pub fn determine_namespace(
     let mut path = original_path.as_path();
 
     trace!(
-        repository = as_display!(repository.dir.display());
+        repository = as_display!(repository.path().display());
         "Determining namespace of '{path}'",
         path=path.display()
     );

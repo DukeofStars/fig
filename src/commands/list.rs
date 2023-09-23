@@ -7,7 +7,7 @@ use color_eyre::{
 };
 use owo_colors::OwoColorize;
 
-use crate::repository::Repository;
+use fig::repository::RepositoryBuilder;
 
 /// Print all files that are in the configuration repository.
 #[derive(Debug, Args)]
@@ -20,7 +20,9 @@ pub struct ListOptions {
     json: bool,
 }
 
-pub fn list(repository: &Repository, options: &ListOptions) -> Result<()> {
+pub fn list(repo_builder: RepositoryBuilder, options: &ListOptions) -> Result<()> {
+    let repository = repo_builder.open()?;
+
     if options.json {
         let mut files: HashMap<String, Vec<PathBuf>> = HashMap::new();
         for ns in repository.namespaces()? {
