@@ -4,8 +4,6 @@ use std::path::PathBuf;
 use clap::{Args, Subcommand};
 use color_eyre::eyre::{ensure, Context};
 use color_eyre::Result;
-use log::info;
-use owo_colors::OwoColorize;
 
 use fig::repository::RepositoryBuilder;
 
@@ -53,9 +51,8 @@ pub fn namespace_cli(repo_builder: RepositoryBuilder, options: &NamespaceOptions
                             .file_name()
                             .expect("No file name?")
                             .to_str()
-                            .unwrap()
-                            .blue(),
-                        namespace.target.display().bright_blue()
+                            .unwrap(),
+                        namespace.target.display()
                     );
                 }
             }
@@ -72,6 +69,7 @@ pub fn namespace_cli(repo_builder: RepositoryBuilder, options: &NamespaceOptions
             std::fs::write(namespace_file, path.display().to_string())
                 .context("Failed to write to namespace file")?;
 
+            tracing::info!(%name, path = %path.display(), "Created namespace");
             println!("Added namespace {}: {}", name, path.display());
 
             Ok(())
@@ -89,7 +87,7 @@ pub fn namespace_cli(repo_builder: RepositoryBuilder, options: &NamespaceOptions
                 "The namespace {name} does not exist"
             );
 
-            info!("Removing namespace: {}", name);
+            tracing::info!("Removing namespace: {}", name);
 
             let namespace_root = repository.path().join(name);
 
@@ -106,6 +104,8 @@ pub fn namespace_cli(repo_builder: RepositoryBuilder, options: &NamespaceOptions
 
             crate::remove_dir_all!(&namespace_root)
                 .context("Failed to remove namespace directory")?;
+            tracing::info!(%name, path = %namespace_root.display(), "Removed namespace");
+            println!("Removed namespace {}: {}", name, namespace_root.display());
 
             Ok(())
         }

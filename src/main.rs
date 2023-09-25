@@ -2,7 +2,8 @@ use std::fs::File;
 
 use clap::{command, Parser, Subcommand};
 use color_eyre::{eyre::Context, Result};
-use log::LevelFilter;
+use tracing::Level;
+use tracing_subscriber::{fmt, fmt::writer::MakeWriterExt, layer::SubscriberExt, Registry};
 
 use fig::repository::RepositoryBuilder;
 pub use fig::*;
@@ -17,6 +18,8 @@ mod commands;
 /// A powerful and cross-platform configuration manager.
 #[derive(Debug, Parser)]
 struct Cli {
+    #[arg(short, long, action = clap::ArgAction::Count)]
+    verbose: u8,
     #[command(subcommand)]
     command: Command,
 }
@@ -29,7 +32,7 @@ enum Command {
     Cmd(CmdOptions),
     Deploy(DeployOptions),
     /// Display information about your configuratino repository.
-    #[clap(alias = "status")]
+    #[command(alias = "status")]
     Info(InfoOptions),
     Init(InitOptions),
     List(ListOptions),
@@ -42,6 +45,8 @@ enum Command {
 fn main() -> Result<()> {
     color_eyre::install()?;
 
+    let cli = Cli::parse_from(wild::args());
+
     // Initialise logging
     let log_path = project_dirs().data_local_dir().join("fig-log.txt");
     let file = File::options()
@@ -49,11 +54,20 @@ fn main() -> Result<()> {
         .write(true)
         .open(log_path)
         .context("Failed to open log file")?;
-    let mut config_builder = simplelog::ConfigBuilder::new();
-    simplelog::WriteLogger::init(LevelFilter::Off, config_builder.build(), file)
-        .context("Failed to initialise logger")?;
 
-    let cli = Cli::parse_from(wild::args());
+    let subscriber = Registry::default()
+        .with(fmt::Layer::default().with_writer(std::io::stdout.with_max_level(Level::TRACE)))
+        .with(
+            fmt::Layer::default().with_writer(file.with_max_level(match cli.verbose {
+                0 => Level::WARN,
+                // -v
+                1 => Level::INFO,
+                // -vv
+                2.. => Level::TRACE,
+            })),
+        );
+    tracing::subscriber::set_global_default(subscriber)
+        .context("Unable to set global subscriber")?;
 
     let repo_builder = RepositoryBuilder::new(project_dirs().data_dir().to_path_buf());
 

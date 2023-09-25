@@ -1,8 +1,9 @@
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
-use log::{as_display, error, trace};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::instrument;
 
 use crate::repository::Repository;
 
@@ -55,18 +56,15 @@ impl Namespace {
     }
 }
 
+#[instrument(skip(repository), fields(repository = % repository.path().display()))]
 pub fn determine_namespace(
     repository: &Repository,
-    path: impl Into<PathBuf>,
+    path: impl Into<PathBuf> + Debug,
 ) -> Result<Namespace, Error> {
     let original_path: PathBuf = path.into();
     let mut path = original_path.as_path();
 
-    trace!(
-        repository = as_display!(repository.path().display());
-        "Determining namespace of '{path}'",
-        path=path.display()
-    );
+    tracing::debug!("Determining namespace of '{}'", path.display());
 
     while let Some(parent) = path.parent() {
         path = parent;
@@ -77,6 +75,6 @@ pub fn determine_namespace(
         }
     }
 
-    error!("'{path}' has no namespace", path = original_path.display());
+    tracing::error!("'{}' has no namespace", original_path.display());
     Err(Error::HasNoNamespace(original_path))
 }

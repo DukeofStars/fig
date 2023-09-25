@@ -5,7 +5,6 @@ use color_eyre::{
     eyre::{eyre, Context},
     Result,
 };
-use owo_colors::OwoColorize;
 
 use fig::repository::RepositoryBuilder;
 
@@ -59,8 +58,8 @@ pub fn list(repo_builder: RepositoryBuilder, options: &ListOptions) -> Result<()
             if options.tree {
                 println!(
                     "{namespace:12}: {path}",
-                    namespace = name.blue(),
-                    path = ns.target.display().bright_blue()
+                    namespace = name,
+                    path = ns.target.display()
                 );
             }
             let files = ns.files()?;

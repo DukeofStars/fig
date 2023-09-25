@@ -1,14 +1,13 @@
 #[macro_export]
 macro_rules! create_dir_all {
     ($path:expr) => {{
-        use log::{error, trace};
         std::fs::create_dir_all($path)
             .map_err(|e| {
-                error!("Failed to create directory '{dir}'", dir = $path.display());
+                tracing::error!("Failed to create directory '{dir}'", dir = $path.display());
                 e
             })
             .map(|a| {
-                trace!("Created directory '{path}'", path = $path.display());
+                tracing::debug!("Created directory '{path}'", path = $path.display());
                 a
             })
     }};
@@ -16,17 +15,8 @@ macro_rules! create_dir_all {
 #[macro_export]
 macro_rules! create_dir_all_if_not_exists {
     ($path:expr) => {{
-        use log::{error, trace};
         if !$path.exists() {
-            std::fs::create_dir_all($path)
-                .map_err(|e| {
-                    error!("Failed to create directory '{dir}'", dir = $path.display());
-                    e
-                })
-                .map(|a| {
-                    trace!("Created directory '{path}'", path = $path.display());
-                    a
-                })
+            $crate::create_dir_all!($path)
         } else {
             Ok(())
         }
@@ -36,14 +26,13 @@ macro_rules! create_dir_all_if_not_exists {
 #[macro_export]
 macro_rules! remove_dir_all {
     ($path:expr) => {{
-        use log::{error, trace};
         std::fs::remove_dir_all($path)
             .map_err(|e| {
-                error!("Failed to remove directory '{dir}'", dir = $path.display());
+                tracing::error!("Failed to remove directory '{dir}'", dir = $path.display());
                 e
             })
             .map(|a| {
-                trace!("Removed directory '{path}'", path = $path.display());
+                tracing::debug!("Removed directory '{path}'", path = $path.display());
                 a
             })
     }};
@@ -52,10 +41,9 @@ macro_rules! remove_dir_all {
 #[macro_export]
 macro_rules! copy_file {
     ($from:expr, $to:expr) => {{
-        use log::{error, trace};
         std::fs::copy($from, $to)
             .map_err(|e| {
-                error!(
+                tracing::error!(
                     "Failed to copy path '{from}' to '{parent}'",
                     from = $from.display(),
                     parent = $to.parent().unwrap_or_else(|| $to).display()
@@ -63,7 +51,7 @@ macro_rules! copy_file {
                 e
             })
             .map(|a| {
-                trace!(
+                tracing::debug!(
                     "Copied path '{from}' to '{parent}'",
                     from = $from.display(),
                     parent = $to.parent().unwrap_or_else(|| $to).display()
@@ -79,22 +67,27 @@ macro_rules! copy_dir {
         // Files to be copied
         let mut files = vec![];
         // Iterator function
-        fn iterate_dir(files: &mut Vec<PathBuf>, path: &PathBuf, depth_guard: u8) {
-            for file in $crate::read_dir!(&path).expect("Failed to read directory") {
+        fn iterate_dir(
+            files: &mut Vec<PathBuf>,
+            path: &PathBuf,
+            depth_guard: u8,
+        ) -> Result<(), std::io::Error> {
+            for file in $crate::read_dir!(&path)? {
                 if let Ok(file) = file {
                     let path = file.path();
                     if path.is_file() {
                         files.push(path);
                     } else {
-                        iterate_dir(files, &path, depth_guard - 1);
+                        iterate_dir(files, &path, depth_guard - 1)?;
                     }
                 } else {
-                    log::warn!("Skipping file, io error: '{err}'", err = file.unwrap_err());
+                    tracing::warn!("Skipping file, io error: '{err}'", err = file.unwrap_err());
                 }
             }
+            Ok(())
         }
 
-        iterate_dir(&mut files, &($from), 20);
+        iterate_dir(&mut files, &($from), 20)?;
 
         let mut copied_files = vec![];
 
@@ -102,7 +95,7 @@ macro_rules! copy_dir {
             let stripped_path = if let Ok(stripped_path) = file.strip_prefix($from) {
                 stripped_path
             } else {
-                log::warn!(
+                tracing::warn!(
                     "Failed to strip '{}' from '{}'",
                     $from.display(),
                     file.display()
@@ -125,7 +118,7 @@ macro_rules! copy_dir {
             }
         }
 
-        log::trace!(
+        tracing::info!(
             "Copied {} files from '{}' to '{}'",
             copied_files.len(),
             $from.display(),
@@ -140,7 +133,7 @@ macro_rules! copy_dir {
 macro_rules! read_dir {
     ($dir:expr) => {{
         $dir.read_dir().map_err(|e| {
-            log::warn!("Failed to get contents of directory '{}'", $dir.display());
+            tracing::warn!("Failed to get contents of directory '{}'", $dir.display());
             e
         })
     }};

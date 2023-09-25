@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
-use log::debug;
 use thiserror::Error;
+use tracing::instrument;
 
 use crate::macros::generate_wrap_error;
 use crate::namespace::Namespace;
@@ -48,10 +48,11 @@ impl RepositoryBuilder {
     }
 
     /// Open already existing repository
+    #[instrument(skip(self), fields(repository = % self.path().display()))]
     pub fn open(self) -> Result<Repository, Error> {
         match self {
             RepositoryBuilder::Unopened(path) => {
-                debug!("Opening repository at '{dir}'", dir = path.display());
+                tracing::info!("Opening repository at '{}'", path.display());
                 if !path.exists() {
                     return Err(Error::NotInitialised);
                 }
@@ -71,10 +72,11 @@ impl RepositoryBuilder {
             RepositoryBuilder::Opened(repository) => Ok(repository),
         }
     }
+    #[instrument(skip(self), fields(repository = % self.path().display()))]
     pub fn init(self) -> Result<Repository, Error> {
         match self {
             RepositoryBuilder::Unopened(path) => {
-                debug!("Creating repository at '{}'", path.display());
+                tracing::info!("Creating repository at '{}'", path.display());
 
                 if path.exists() {
                     return Err(Error::AlreadyInitialised);
