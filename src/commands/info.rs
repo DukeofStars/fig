@@ -60,6 +60,7 @@ pub fn info(repo_builder: RepositoryBuilder, options: &InfoOptions) -> Result<()
 
     println!("initialised: {}", info.initialised);
     println!("location: {}", info.repository_path.display());
+    println!("log file: {}", info.log_path.display());
 
     println!();
 
