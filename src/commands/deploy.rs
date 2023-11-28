@@ -23,7 +23,9 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
 
             // Make sure dest directory exists
             if let Some(parent) = dest.parent() {
-                crate::create_dir_all!(parent)?;
+                if !parent.exists() {
+                    crate::create_dir_all!(parent)?;
+                }
             }
 
             crate::copy_file!(&src, &dest).context(format!(
