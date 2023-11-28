@@ -49,6 +49,10 @@ fn main() -> Result<()> {
 
     // Initialise logging
     let log_path = project_dirs().data_local_dir().join("fig-log.txt");
+    if !log_path.parent().unwrap().exists() {
+        std::fs::create_dir_all(&log_path.parent().unwrap())
+            .context("Failed to create log directory")?;
+    }
     let file = File::options()
         .create(true)
         .write(true)
