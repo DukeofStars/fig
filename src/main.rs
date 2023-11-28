@@ -60,9 +60,9 @@ fn main() -> Result<()> {
         .context("Failed to open log file")?;
 
     let subscriber = Registry::default()
-        .with(fmt::Layer::default().with_writer(std::io::stderr.with_max_level(Level::TRACE)))
+        .with(fmt::Layer::default().with_writer(file.with_max_level(Level::TRACE)))
         .with(
-            fmt::Layer::default().with_writer(file.with_max_level(match cli.verbose {
+            fmt::Layer::default().with_writer(std::io::stderr.with_max_level(match cli.verbose {
                 0 => Level::WARN,
                 // -v
                 1 => Level::INFO,
