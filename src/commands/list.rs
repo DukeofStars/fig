@@ -69,7 +69,7 @@ pub fn list(repo_builder: RepositoryBuilder, options: &ListOptions) -> Result<()
                     if options.tree {
                         " ".repeat(12)
                     } else {
-                        "".to_string()
+                        String::new()
                     },
                     path = file.display()
                 );

@@ -33,7 +33,7 @@ pub fn deploy(repo_builder: RepositoryBuilder, options: &DeployOptions) -> Resul
             }
 
             if options.verbose {
-                println!("Copying: '{}' to '{}'", src.display(), dest.display())
+                println!("Copying: '{}' to '{}'", src.display(), dest.display());
             }
             crate::copy_file!(&src, &dest).context(format!(
                 "Failed to copy '{}' to '{}'",

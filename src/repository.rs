@@ -35,7 +35,7 @@ pub enum RepositoryBuilder {
 }
 
 impl RepositoryBuilder {
-    pub fn path(&self) -> &PathBuf {
+    #[must_use] pub fn path(&self) -> &PathBuf {
         match self {
             RepositoryBuilder::Unopened(path) => path,
             RepositoryBuilder::Opened(repository) => repository.path(),
@@ -43,7 +43,7 @@ impl RepositoryBuilder {
     }
 
     /// Create a new repository builder.
-    pub fn new(path: PathBuf) -> RepositoryBuilder {
+    #[must_use] pub fn new(path: PathBuf) -> RepositoryBuilder {
         RepositoryBuilder::Unopened(path)
     }
 
@@ -61,7 +61,7 @@ impl RepositoryBuilder {
                     Ok(repository) => {
                         Ok(Repository {
                             git_repository: repository,
-                            path: path.to_path_buf(),
+                            path: path.clone(),
                         })
                     }
                     Err(git_error) => {
@@ -131,11 +131,11 @@ pub struct Repository {
 }
 
 impl Repository {
-    pub fn into_builder(self) -> RepositoryBuilder {
+    #[must_use] pub fn into_builder(self) -> RepositoryBuilder {
         RepositoryBuilder::Opened(self)
     }
 
-    pub fn path(&self) -> &PathBuf {
+    #[must_use] pub fn path(&self) -> &PathBuf {
         &self.path
     }
 

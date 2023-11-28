@@ -52,7 +52,7 @@ pub fn add(repo_builder: RepositoryBuilder, options: &AddOptions) -> Result<()> 
 
         let output_path = &namespace.target.join(new_path);
         if options.mock {
-            println!("{} -> {}", file.display(), output_path.display())
+            println!("{} -> {}", file.display(), output_path.display());
         } else if file.is_file() {
             match crate::copy_file!(&file, output_path) {
                 Ok(_) => {}

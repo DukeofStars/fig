@@ -41,7 +41,7 @@ pub fn namespace_cli(repo_builder: RepositoryBuilder, options: &NamespaceOptions
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&repository.namespaces()?).unwrap()
-                )
+                );
             } else {
                 for namespace in repository.namespaces()? {
                     println!(

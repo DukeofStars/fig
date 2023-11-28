@@ -27,7 +27,7 @@ mod macros {
     pub(crate) use generate_wrap_error;
 }
 
-pub fn project_dirs() -> ProjectDirs {
+#[must_use] pub fn project_dirs() -> ProjectDirs {
     ProjectDirs::from("", "", "fig")
         .expect("Failed to find home directory, maybe your operating system is unsupported?")
 }

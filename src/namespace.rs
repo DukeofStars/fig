@@ -35,9 +35,7 @@ impl Namespace {
     }
 
     fn recurse_dir(&self, dir: &Path, files: &mut Vec<PathBuf>, depth: u8) -> Result<(), Error> {
-        if depth == 0 {
-            panic!("Overflowed depth")
-        }
+        assert!(depth != 0, "Overflowed depth");
         for entry in dir.read_dir()? {
             let entry = entry?;
             let path = entry.path();
