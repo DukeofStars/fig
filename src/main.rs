@@ -65,7 +65,7 @@ fn main() -> Result<()> {
             fmt::Layer::default().with_writer(std::io::stderr.with_max_level(match cli.verbose {
                 0 => Level::WARN,
                 // -v
-                1 => Level::INFO,
+                1 => Level::DEBUG,
                 // -vv
                 2.. => Level::TRACE,
             })),
