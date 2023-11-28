@@ -147,8 +147,8 @@ impl Repository {
             if entry.file_type()?.is_dir() && entry.path().join("namespace.fig").exists() {
                 let path = std::fs::read_to_string(entry.path().join("namespace.fig"))?;
                 let namespace = Namespace {
-                    target: PathBuf::from(path).canonicalize()?,
-                    location: entry.path().canonicalize()?,
+                    target: PathBuf::from(path),
+                    location: entry.path(),
                 };
                 out.push(namespace);
             }
