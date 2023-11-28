@@ -7,34 +7,26 @@ use fig::repository::RepositoryBuilder;
 
 /// Deploy files from the configuration repository to your system.
 #[derive(Debug, Args)]
-pub struct DeployOptions {
-    #[clap(short, long)]
-    verbose: bool,
-}
+pub struct DeployOptions {}
 
-pub fn deploy(repo_builder: RepositoryBuilder, options: &DeployOptions) -> Result<()> {
+pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Result<()> {
     let repository = repo_builder.open()?;
 
     let namespaces = repository.namespaces()?;
 
     for namespace in &namespaces {
         let mut files = vec![];
-        get_files(&namespace.location, &namespace.location, &mut files, 10)?;
+        get_files(&namespace.location, &namespace.location, &mut files, 20)?;
         for file in files {
             let dest = namespace.target.join(&file);
             let src = namespace.location.join(&file);
 
             // Make sure dest directory exists
             if let Some(parent) = dest.parent() {
-                if options.verbose {
-                    println!("Creating directory: {parent}", parent = parent.display());
-                }
                 crate::create_dir_all!(parent)?;
             }
 
-            if options.verbose {
-                println!("Copying: '{}' to '{}'", src.display(), dest.display());
-            }
+            println!("Copying: '{}' to '{}'", src.display(), dest.display());
             crate::copy_file!(&src, &dest).context(format!(
                 "Failed to copy '{}' to '{}'",
                 src.display(),
