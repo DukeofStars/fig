@@ -35,7 +35,7 @@ pub enum RepositoryBuilder {
 }
 
 impl RepositoryBuilder {
-    #[must_use] pub fn path(&self) -> &PathBuf {
+    pub fn path(&self) -> &PathBuf {
         match self {
             RepositoryBuilder::Unopened(path) => path,
             RepositoryBuilder::Opened(repository) => repository.path(),
@@ -43,7 +43,7 @@ impl RepositoryBuilder {
     }
 
     /// Create a new repository builder.
-    #[must_use] pub fn new(path: PathBuf) -> RepositoryBuilder {
+    pub fn new(path: PathBuf) -> RepositoryBuilder {
         RepositoryBuilder::Unopened(path)
     }
 
@@ -52,7 +52,7 @@ impl RepositoryBuilder {
     pub fn open(self) -> Result<Repository, Error> {
         match self {
             RepositoryBuilder::Unopened(path) => {
-                tracing::info!("Opening repository at '{}'", path.display());
+                tracing::trace!("Opening repository at '{}'", path.display());
                 if !path.exists() {
                     return Err(Error::NotInitialised);
                 }
@@ -131,11 +131,13 @@ pub struct Repository {
 }
 
 impl Repository {
-    #[must_use] pub fn into_builder(self) -> RepositoryBuilder {
+    #[must_use]
+    pub fn into_builder(self) -> RepositoryBuilder {
         RepositoryBuilder::Opened(self)
     }
 
-    #[must_use] pub fn path(&self) -> &PathBuf {
+    #[must_use]
+    pub fn path(&self) -> &PathBuf {
         &self.path
     }
 
