@@ -26,7 +26,6 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
                 crate::create_dir_all!(parent)?;
             }
 
-            println!("Copying: '{}' to '{}'", src.display(), dest.display());
             crate::copy_file!(&src, &dest).context(format!(
                 "Failed to copy '{}' to '{}'",
                 src.display(),
