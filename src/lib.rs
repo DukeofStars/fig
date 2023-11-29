@@ -2,6 +2,7 @@ use directories::ProjectDirs;
 
 mod log_utils;
 pub mod namespace;
+pub mod plugin;
 pub mod repository;
 pub mod template;
 
@@ -27,7 +28,7 @@ mod macros {
     pub(crate) use generate_wrap_error;
 }
 
-#[must_use] pub fn project_dirs() -> ProjectDirs {
+pub fn project_dirs() -> ProjectDirs {
     ProjectDirs::from("", "", "fig")
         .expect("Failed to find home directory, maybe your operating system is unsupported?")
 }
