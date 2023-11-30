@@ -1,3 +1,6 @@
+[workspace]
+members = ["fig-plugin-runner"]
+
 [package]
 edition = "2021"
 name = "fig"
