@@ -200,6 +200,10 @@ dependencies = [
 [[package]]
 name = "fig-plugin-runner"
 version = "0.1.0"
+dependencies = [
+ "fig",
+ "thiserror",
+]
 
 [[package]]
 name = "form_urlencoded"

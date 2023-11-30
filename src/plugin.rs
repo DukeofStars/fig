@@ -1,9 +1,15 @@
-use std::path::PathBuf;
+use std::{fmt::Display, path::PathBuf};
 
 use crate::repository::Repository;
 
+pub enum Instruction {
+    Exit = 0,
+    RunOnRepository = 1,
+    RunOnFile = 2,
+}
+
 pub trait Plugin {
-    type Err;
+    type Err: Display;
 
     fn info(&self) -> PluginInfo;
 
