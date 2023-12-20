@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use thiserror::Error;
@@ -5,6 +6,7 @@ use tracing::instrument;
 
 use crate::macros::generate_wrap_error;
 use crate::namespace::Namespace;
+use crate::plugin::PluginInfo;
 use crate::template;
 
 #[derive(Error, Debug)]
@@ -21,6 +23,8 @@ pub enum Error {
     TemplateError(#[from] crate::template::Error),
     #[error("{}", .0)]
     OpenError(#[source] Box<Self>, Vec<Self>),
+    #[error(transparent)]
+    TomlDeError(#[from] toml::de::Error),
 
     // This must exist for generate_wrap_error!() to work.
     #[error("{}", .1)]
@@ -179,5 +183,17 @@ impl Repository {
             .find_remote("origin")?
             .push(&["master"], None)?;
         Ok(())
+    }
+
+    pub fn load_plugins(&self) -> Result<HashMap<String, PluginInfo>, Error> {
+        let path = self.path().join("plugins.toml");
+        if !path.exists() {
+            return Ok(HashMap::default());
+        }
+
+        let text = std::fs::read_to_string(&path)?;
+        let map = toml::from_str(&text)?;
+
+        Ok(map)
     }
 }

@@ -11,6 +11,7 @@ description = "A modern, powerful, and truly cross-platform configuration manage
 tracing = "0.1"
 tracing-subscriber = "0.3"
 
+toml = "0.8"
 clap = { version = "4.1", features = ["derive"] }
 color-eyre = { version = "0.6.2" }
 directories = { version = "5.0" }
