@@ -15,6 +15,8 @@ pub struct PluginTriggerLookup<'a> {
 }
 
 pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> std::io::Result<Vec<u8>> {
+    tracing::debug!("Running command '{}'", cmd);
+
     let mut command = std::process::Command::new(cmd);
 
     command.stdin(Stdio::piped()).stdout(Stdio::piped());
@@ -33,6 +35,11 @@ pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> std::io::Result<Vec<u8>> {
     let mut buf = Vec::new();
     stdout.read_to_end(&mut buf)?;
 
+    let output = std::str::from_utf8(&buf).unwrap_or("INVALID_UTF8");
+    let output = format!("\"\n{}\"", truncate_string(output, 5));
+
+    tracing::debug!(%output, "Command '{}' ran successfully", cmd);
+
     Ok(buf)
 }
 pub fn call_on_repository(cmd: &String, repo_path: &PathBuf) -> std::io::Result<()> {
@@ -43,6 +50,19 @@ pub fn call_on_repository(cmd: &String, repo_path: &PathBuf) -> std::io::Result<
 
     let output = command.output();
     output.map(|_| ())
+}
+
+fn truncate_string(string: impl AsRef<str>, line_count: usize) -> String {
+    let string = string.as_ref();
+    let lines = string.lines().collect::<Vec<_>>();
+    let output = if lines.len() > line_count {
+        let mut output = lines[0..line_count].join("\n");
+        output.push_str(&format!("\n... ({} more lines)", lines.len() - line_count));
+        output
+    } else {
+        string.to_string()
+    };
+    output
 }
 
 impl<'a> PluginTriggerLookup<'a> {
