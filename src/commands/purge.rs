@@ -1,6 +1,6 @@
 use color_eyre::{eyre::Context, Result};
 
-use fig::repository::RepositoryBuilder;
+use crate::repository::RepositoryBuilder;
 
 pub fn purge(repo_builder: RepositoryBuilder) -> Result<()> {
     let repository = repo_builder

@@ -13,8 +13,6 @@ use crate::commands::{
     info::InfoOptions, init::InitOptions, list::ListOptions, namespace::NamespaceOptions,
 };
 
-mod commands;
-
 /// A powerful and cross-platform configuration manager.
 #[derive(Debug, Parser)]
 struct Cli {

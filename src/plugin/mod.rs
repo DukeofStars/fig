@@ -1,4 +1,9 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+    path::PathBuf,
+    process::Stdio,
+};
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -9,33 +14,39 @@ pub struct PluginTriggerLookup<'a> {
     pub file: HashMap<String, &'a PluginInfo>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct PluginInfo {
-    cmd: String,
-    triggers: Vec<Trigger>,
-}
+pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> std::io::Result<Vec<u8>> {
+    let mut command = std::process::Command::new(cmd);
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Trigger {
-    Repository,
-    File(String),
-}
+    command.stdin(Stdio::piped()).stdout(Stdio::piped());
 
-#[derive(Debug, Error)]
-pub enum FromMapError {
-    #[error("Conflicting plugins!: Both {} and {} trigger on '{}'", .plugin1, .plugin2, .ext)]
-    ConflictingPluginTriggers {
-        ext: String,
-        plugin1: String,
-        plugin2: String,
-    },
+    command.env("FIG_TRIGGER", "FILE");
+
+    let mut child = command.spawn()?;
+    let mut stdin = child.stdin.take().unwrap();
+    let mut stdout = child.stdout.take().unwrap();
+
+    stdin.write_all(&bytes)?;
+
+    // TODO: Handle errors in the plugin
+    child.wait()?;
+
+    let mut buf = Vec::new();
+    stdout.read_to_end(&mut buf)?;
+
+    Ok(buf)
+}
+pub fn call_on_repository(cmd: &String, repo_path: &PathBuf) -> std::io::Result<()> {
+    let mut command = std::process::Command::new(cmd);
+
+    command.arg(repo_path);
+    command.env("FIG_TRIGGER", "REPOSITORY");
+
+    let output = command.output();
+    output.map(|_| ())
 }
 
 impl<'a> PluginTriggerLookup<'a> {
-    pub fn from_iter<M: IntoIterator<Item = &'a (String, PluginInfo)>>(
-        map: M,
-    ) -> Result<Self, FromMapError> {
+    pub fn from_map(map: &'a HashMap<String, PluginInfo>) -> Result<Self, FromMapError> {
         let mut me = Self::default();
 
         for (_, plugin_info) in map {
@@ -60,4 +71,27 @@ impl<'a> PluginTriggerLookup<'a> {
 
         Ok(me)
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PluginInfo {
+    pub cmd: String,
+    triggers: Vec<Trigger>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Trigger {
+    Repository,
+    File(String),
+}
+
+#[derive(Debug, Error)]
+pub enum FromMapError {
+    #[error("Conflicting plugins!: Both {} and {} trigger on '.{}'", .plugin1, .plugin2, .ext)]
+    ConflictingPluginTriggers {
+        ext: String,
+        plugin1: String,
+        plugin2: String,
+    },
 }

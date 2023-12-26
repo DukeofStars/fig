@@ -1,5 +1,6 @@
 use directories::ProjectDirs;
 
+pub mod commands;
 mod log_utils;
 pub mod namespace;
 pub mod plugin;

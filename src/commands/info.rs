@@ -4,8 +4,8 @@ use clap::Args;
 use color_eyre::{eyre::Context, Result};
 use serde::{Deserialize, Serialize};
 
-use fig::repository::Error;
-use fig::{namespace::Namespace, repository, repository::RepositoryBuilder};
+use crate::repository::Error;
+use crate::{namespace::Namespace, repository, repository::RepositoryBuilder};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Info {

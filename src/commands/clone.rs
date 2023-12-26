@@ -2,7 +2,7 @@ use clap::Args;
 use color_eyre::Result;
 use url::Url;
 
-use fig::repository::RepositoryBuilder;
+use crate::repository::RepositoryBuilder;
 
 #[derive(Debug, Args)]
 pub struct CloneOptions {

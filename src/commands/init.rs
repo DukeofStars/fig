@@ -4,7 +4,7 @@ use clap::Args;
 use color_eyre::eyre::Context;
 use color_eyre::Result;
 
-use fig::repository::RepositoryBuilder;
+use crate::repository::RepositoryBuilder;
 
 /// Initialise a configuration repository.
 #[derive(Debug, Args)]

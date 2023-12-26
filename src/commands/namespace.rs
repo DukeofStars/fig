@@ -5,7 +5,7 @@ use clap::{Args, Subcommand};
 use color_eyre::eyre::{ensure, Context};
 use color_eyre::Result;
 
-use fig::repository::RepositoryBuilder;
+use crate::repository::RepositoryBuilder;
 
 /// Manage your configuration namespaces
 #[derive(Debug, Args)]

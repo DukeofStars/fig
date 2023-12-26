@@ -3,7 +3,7 @@ use std::process::Command;
 use clap::Args;
 use color_eyre::{eyre::Context, Result};
 
-use fig::repository::RepositoryBuilder;
+use crate::repository::RepositoryBuilder;
 
 /// Run a command in the configuration repository directory.
 #[derive(Debug, Args)]

@@ -4,9 +4,7 @@ use clap::Parser;
 use color_eyre::Result;
 use color_eyre::{eyre::eyre, Section};
 
-use fig::repository::RepositoryBuilder;
-
-use crate::namespace::determine_namespace;
+use crate::{namespace::determine_namespace, repository::RepositoryBuilder};
 
 /// Add a file to the configuration repository.
 #[derive(Parser, Debug)]

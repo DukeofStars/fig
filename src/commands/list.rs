@@ -6,7 +6,7 @@ use color_eyre::{
     Result,
 };
 
-use fig::repository::RepositoryBuilder;
+use crate::repository::RepositoryBuilder;
 
 /// Print all files that are in the configuration repository.
 #[derive(Debug, Args)]
