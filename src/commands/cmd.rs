@@ -5,7 +5,6 @@ use color_eyre::{eyre::Context, Result};
 
 use crate::repository::RepositoryBuilder;
 
-/// Run a command in the configuration repository directory.
 #[derive(Debug, Args)]
 pub struct CmdOptions {
     command: String,

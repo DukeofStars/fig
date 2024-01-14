@@ -24,16 +24,23 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Add a file to the configuration repository.
     Add(AddOptions),
+    /// Clone another repository.
     Clone(CloneOptions),
+    /// Run a command in the configuration repository directory.
     #[command(alias = "sh")]
     Cmd(CmdOptions),
+    /// Deploy files from the configuration repository to your system.
     Deploy(DeployOptions),
     /// Display information about your configuratino repository.
     #[command(alias = "status")]
     Info(InfoOptions),
+    /// Initialise a configuration repository.
     Init(InitOptions),
+    /// Print all files that are in the configuration repository.
     List(ListOptions),
+    /// Manage your namespaces
     #[command(alias = "ns")]
     Namespace(NamespaceOptions),
     /// Completely delete your configuration repository.

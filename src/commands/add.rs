@@ -6,7 +6,6 @@ use color_eyre::{eyre::eyre, Section};
 
 use crate::{namespace::determine_namespace, repository::RepositoryBuilder};
 
-/// Add a file to the configuration repository.
 #[derive(Parser, Debug)]
 pub struct AddOptions {
     files: Vec<PathBuf>,

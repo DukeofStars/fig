@@ -8,7 +8,6 @@ use color_eyre::{
 
 use crate::repository::RepositoryBuilder;
 
-/// Print all files that are in the configuration repository.
 #[derive(Debug, Args)]
 pub struct ListOptions {
     #[clap(short, long)]

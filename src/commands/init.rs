@@ -6,7 +6,6 @@ use color_eyre::Result;
 
 use crate::repository::RepositoryBuilder;
 
-/// Initialise a configuration repository.
 #[derive(Debug, Args)]
 pub struct InitOptions {
     /// Ignore repositories in the location already

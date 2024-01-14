@@ -7,7 +7,6 @@ use color_eyre::Result;
 
 use crate::repository::RepositoryBuilder;
 
-/// Manage your configuration namespaces
 #[derive(Debug, Args)]
 pub struct NamespaceOptions {
     #[clap(subcommand)]
