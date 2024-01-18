@@ -67,7 +67,24 @@ pub fn info(repo_builder: RepositoryBuilder, options: &InfoOptions) -> Result<()
     println!("== Namespaces {} ==", info.namespaces.len());
     for namespace in &info.namespaces {
         let file_name = namespace.location.file_name().unwrap().to_str().unwrap();
-        println!("{}: {}", file_name, namespace.target.display());
+        println!(
+            "{}: {}",
+            file_name,
+            match namespace.targets.len() {
+                1 => {
+                    namespace.targets.get(0).unwrap().display().to_string()
+                }
+                2.. => {
+                    namespace
+                        .targets
+                        .iter()
+                        .map(|p| p.display().to_string())
+                        .collect::<Vec<String>>()
+                        .join(&format!("{}\n", " ".repeat(file_name.len() + 2)))
+                }
+                _ => panic!(),
+            }
+        );
     }
 
     if !info.floating_namespaces.is_empty() {

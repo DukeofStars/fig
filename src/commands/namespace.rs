@@ -51,7 +51,23 @@ pub fn namespace_cli(repo_builder: RepositoryBuilder, options: &NamespaceOptions
                             .expect("No file name?")
                             .to_str()
                             .unwrap(),
-                        namespace.target.display()
+                        match namespace.targets.len() {
+                            1 => {
+                                namespace.targets.get(0).unwrap().display().to_string()
+                            }
+                            2.. => {
+                                namespace
+                                    .targets
+                                    .iter()
+                                    .map(|p| p.display().to_string())
+                                    .collect::<Vec<String>>()
+                                    .join(&format!(
+                                        "{}\n",
+                                        " ".repeat(14 /* Align the targets with each other */)
+                                    ))
+                            }
+                            _ => panic!(),
+                        }
                     );
                 }
             }

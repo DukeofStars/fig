@@ -22,7 +22,7 @@ pub enum Error {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Namespace {
     /// The output location, where files are deployed to.
-    pub target: PathBuf,
+    pub targets: Vec<PathBuf>,
     /// The physical location of the namespace, where files are stored.
     pub location: PathBuf,
 }
@@ -41,9 +41,11 @@ impl Namespace {
             let path = entry.path();
             if path.is_file() {
                 if path.file_name().unwrap() != "namespace.fig" {
-                    let relative_path = path.strip_prefix(&self.location)?;
-                    let display_path = self.target.join(relative_path);
-                    files.push(display_path);
+                    for target in &self.targets {
+                        let relative_path = path.strip_prefix(&self.location)?;
+                        let display_path = target.join(relative_path);
+                        files.push(display_path);
+                    }
                 }
             } else {
                 self.recurse_dir(&path, files, depth - 1)?;
@@ -67,7 +69,8 @@ pub fn determine_namespace(
     while let Some(parent) = path.parent() {
         path = parent;
         for ns in repository.namespaces()? {
-            if ns.target == parent {
+            // Only allow the file to be added to the namespace if it is in all of the targets.
+            if ns.targets.iter().all(|target| target == parent) {
                 return Ok(ns);
             }
         }

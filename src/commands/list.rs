@@ -56,9 +56,24 @@ pub fn list(repo_builder: RepositoryBuilder, options: &ListOptions) -> Result<()
 
             if options.tree {
                 println!(
-                    "{namespace:12}: {path}",
-                    namespace = name,
-                    path = ns.target.display()
+                    "{:12}: {}",
+                    name,
+                    match ns.targets.len() {
+                        1 => {
+                            ns.targets.get(0).unwrap().display().to_string()
+                        }
+                        2.. => {
+                            ns.targets
+                                .iter()
+                                .map(|p| p.display().to_string())
+                                .collect::<Vec<String>>()
+                                .join(&format!(
+                                    "{}\n",
+                                    " ".repeat(14 /* Align the targets with each other */)
+                                ))
+                        }
+                        _ => panic!(),
+                    }
                 );
             }
             let files = ns.files()?;

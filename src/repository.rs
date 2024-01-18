@@ -151,9 +151,16 @@ impl Repository {
         for entry in self.path.read_dir().wrap("Failed to read directory")? {
             let entry = entry?;
             if entry.file_type()?.is_dir() && entry.path().join("namespace.fig").exists() {
-                let path = std::fs::read_to_string(entry.path().join("namespace.fig"))?;
+                let text = std::fs::read_to_string(entry.path().join("namespace.fig"))?;
+                let targets = text
+                    .lines()
+                    .into_iter()
+                    .map(|l| l.trim())
+                    .filter(|l| !l.is_empty())
+                    .map(PathBuf::from)
+                    .collect();
                 let namespace = Namespace {
-                    target: PathBuf::from(path),
+                    targets,
                     location: entry.path(),
                 };
                 out.push(namespace);

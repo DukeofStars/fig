@@ -28,17 +28,23 @@ pub fn add(repo_builder: RepositoryBuilder, options: &AddOptions) -> Result<()> 
 
         let namespace = determine_namespace(&repository, &file)?;
 
-        let new_path = namespace
-            .location
-            .join(match file.strip_prefix(&namespace.target) {
+        let new_path = namespace.location.join(
+            match file.strip_prefix(
+                &namespace
+                    .targets
+                    .get(0)
+                    .expect("This is impossible. The logic in determine_namespace must be wrong"),
+            ) {
                 Ok(path) => path,
                 Err(e) => {
                     prefix_errors.push(e);
                     continue;
                 }
-            });
+            },
+        );
+
         if let Some(parent) = new_path.parent() {
-            let parent = namespace.target.join(parent);
+            let parent = namespace.location.join(parent);
             if !parent.exists() {
                 if let Err(e) = crate::create_dir_all!(&parent) {
                     io_errors.push(e);
@@ -47,7 +53,7 @@ pub fn add(repo_builder: RepositoryBuilder, options: &AddOptions) -> Result<()> 
             }
         }
 
-        let output_path = &namespace.target.join(new_path);
+        let output_path = &namespace.location.join(new_path);
         if options.mock {
             println!("{} -> {}", file.display(), output_path.display());
         } else if file.is_file() {

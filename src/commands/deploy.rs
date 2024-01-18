@@ -28,33 +28,35 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
         let mut files = vec![];
         get_files(&namespace.location, &namespace.location, &mut files, 20)?;
         for file in files {
-            let mut dest = namespace.target.join(&file);
-            let mut src = namespace.location.join(&file);
+            for target in &namespace.targets {
+                let mut dest = target.join(&file);
+                let mut src = namespace.location.join(&file);
 
-            // Make sure dest directory exists
-            if let Some(parent) = dest.parent() {
-                if !parent.exists() {
-                    crate::create_dir_all!(parent)?;
+                // Make sure dest directory exists
+                if let Some(parent) = dest.parent() {
+                    if !parent.exists() {
+                        crate::create_dir_all!(parent)?;
+                    }
                 }
+
+                let mut contents = std::fs::read(&src)?;
+                while let Some(plugin) = src
+                    .extension()
+                    .and_then(|ext| plugin_trigger_lookup.file.get(ext.to_str().unwrap()))
+                {
+                    contents = plugin::call_on_file(&plugin.cmd, contents)?;
+
+                    dest = dest.with_extension("");
+                    src = src.with_extension("");
+                }
+
+                std::fs::write(&dest, contents)?;
+                // crate::copy_file!(&src, &dest).context(format!(
+                //     "Failed to copy '{}' to '{}'",
+                //     src.display(),
+                //     dest.display()
+                // ))?;
             }
-
-            let mut contents = std::fs::read(&src)?;
-            while let Some(plugin) = src
-                .extension()
-                .and_then(|ext| plugin_trigger_lookup.file.get(ext.to_str().unwrap()))
-            {
-                contents = plugin::call_on_file(&plugin.cmd, contents)?;
-
-                dest = dest.with_extension("");
-                src = src.with_extension("");
-            }
-
-            std::fs::write(&dest, contents)?;
-            // crate::copy_file!(&src, &dest).context(format!(
-            //     "Failed to copy '{}' to '{}'",
-            //     src.display(),
-            //     dest.display()
-            // ))?;
         }
     }
 
