@@ -8,13 +8,21 @@ use std::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Plugin {} failed with code {}", .plugin_name, .code)]
+    PluginError { plugin_name: String, code: i32 },
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+}
+
 #[derive(Debug, Default)]
 pub struct PluginTriggerLookup<'a> {
     pub repository: Vec<&'a PluginInfo>,
     pub file: HashMap<String, &'a PluginInfo>,
 }
 
-pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> std::io::Result<Vec<u8>> {
+pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     tracing::debug!("Running command '{}'", cmd);
 
     let mut command = std::process::Command::new(cmd);
@@ -30,7 +38,13 @@ pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> std::io::Result<Vec<u8>> {
     stdin.write_all(&bytes)?;
 
     // TODO: Handle errors in the plugin
-    child.wait()?;
+    let status = child.wait()?;
+    if !status.success() {
+        return Err(Error::PluginError {
+            plugin_name: cmd.clone(),
+            code: status.code().take().unwrap_or(-1),
+        });
+    }
 
     let mut buf = Vec::new();
     stdout.read_to_end(&mut buf)?;
