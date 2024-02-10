@@ -67,9 +67,11 @@ fn main() -> Result<()> {
     let level = match cli.verbose {
         0 => Level::WARN,
         // -v
-        1 => Level::DEBUG,
+        1 => Level::INFO,
         // -vv
-        2.. => Level::TRACE,
+        2 => Level::DEBUG,
+        // -vvv
+        3.. => Level::TRACE,
     };
     let subscriber = Registry::default()
         .with(fmt::Layer::default().with_writer(file.with_max_level(Level::TRACE)))
