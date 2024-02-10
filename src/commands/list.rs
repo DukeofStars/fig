@@ -10,10 +10,12 @@ use crate::repository::RepositoryBuilder;
 
 #[derive(Debug, Args)]
 pub struct ListOptions {
+    /// Display files in their respective namespace
     #[clap(short, long)]
-    tree: bool,
-    #[clap(short, long, alias = "ns")]
-    namespace: Vec<String>,
+    pretty: bool,
+    /// Only show files from certain namespace
+    #[clap(short, long)]
+    filter: Vec<String>,
     #[clap(long)]
     json: bool,
 }
@@ -46,43 +48,16 @@ pub fn list(repo_builder: RepositoryBuilder, options: &ListOptions) -> Result<()
                 .to_str()
                 .ok_or(eyre!("Failed to convert OsStr to &str"))?;
 
-            if !options.namespace.is_empty() && !options.namespace.contains(&name.to_string()) {
+            if !options.filter.is_empty() && !options.filter.contains(&name.to_string()) {
                 continue;
             }
 
-            if options.tree {
-                println!(
-                    "{:12}: {}",
-                    name,
-                    match ns.targets.len() {
-                        1 => {
-                            ns.targets.get(0).unwrap().display().to_string()
-                        }
-                        2.. => {
-                            ns.targets
-                                .iter()
-                                .map(|p| p.display().to_string())
-                                .collect::<Vec<String>>()
-                                .join(&format!(
-                                    "{}\n",
-                                    " ".repeat(14 /* Align the targets with each other */)
-                                ))
-                        }
-                        _ => panic!(),
-                    }
-                );
+            if options.pretty {
+                println!("-- {}", name,);
             }
             let files = ns.files()?;
             for file in files {
-                println!(
-                    "{}{path}",
-                    if options.tree {
-                        " ".repeat(12)
-                    } else {
-                        String::new()
-                    },
-                    path = file.display()
-                );
+                println!("{path}", path = file.display());
             }
         }
 
