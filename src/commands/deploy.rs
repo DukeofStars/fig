@@ -13,6 +13,8 @@ use crate::{
 pub struct DeployOptions {}
 
 pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Result<()> {
+    info!("Deploying files");
+
     let repository = repo_builder.open()?;
 
     let namespaces = repository.namespaces()?;
