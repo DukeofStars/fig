@@ -20,6 +20,8 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
     let plugin_map = repository.load_plugins()?;
     let plugin_trigger_lookup = PluginTriggerLookup::from_map(&plugin_map)?;
 
+    info!("Deploying files");
+
     for plugin in plugin_trigger_lookup.repository {
         plugin::call_on_repository(&plugin.cmd, repository.path())
             .context("Failed to call plugin")?;
