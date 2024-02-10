@@ -1,38 +1,14 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use thiserror::Error;
-use tracing::instrument;
+use color_eyre::{
+    eyre::{bail, Context},
+    Result,
+};
+use tracing::{debug, error, info, instrument, warn};
 
-use crate::macros::generate_wrap_error;
-use crate::namespace::Namespace;
-use crate::plugin::PluginInfo;
-use crate::template;
+use crate::{namespace::Namespace, plugin::PluginInfo, template};
 
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("Repository already initialised")]
-    AlreadyInitialised,
-    #[error("Repository not yet initialised")]
-    NotInitialised,
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-    #[error("Could not open git repository")]
-    GitError(#[from] git2::Error),
-    #[error(transparent)]
-    TemplateError(#[from] crate::template::Error),
-    #[error("{}", .0)]
-    OpenError(#[source] Box<Self>, Vec<Self>),
-    #[error(transparent)]
-    TomlDeError(#[from] toml::de::Error),
-
-    // This must exist for generate_wrap_error!() to work.
-    #[error("{}", .1)]
-    Wrapped(#[source] Box<Self>, String),
-}
-generate_wrap_error!(Error, Wrap);
-
-/// Create or initialise a repository.
 pub enum RepositoryBuilder {
     Unopened(PathBuf),
     Opened(Repository),
@@ -53,23 +29,24 @@ impl RepositoryBuilder {
 
     /// Open already existing repository
     #[instrument(skip(self), fields(repository = % self.path().display()))]
-    pub fn open(self) -> Result<Repository, Error> {
+    pub fn open(self) -> Result<Repository> {
+        info!("Opening repository");
         match self {
             RepositoryBuilder::Unopened(path) => {
-                tracing::trace!("Opening repository at '{}'", path.display());
                 if !path.exists() {
-                    return Err(Error::NotInitialised);
+                    error!("Repository not initialised");
+                    bail!("Repository not initialised");
                 }
                 let repository = git2::Repository::open(&path);
+                debug!("Opening git repository");
                 match repository {
-                    Ok(repository) => {
-                        Ok(Repository {
-                            git_repository: repository,
-                            path: path.clone(),
-                        })
-                    }
-                    Err(git_error) => {
-                        Err(git_error).wrap("Failed to open git repository, maybe it isn't initialised. You can initialise it with `fig cmd -- git init`")?
+                    Ok(repository) => Ok(Repository {
+                        git_repository: repository,
+                        path: path.clone(),
+                    }),
+                    Err(_) => {
+                        error!("Failed to open git repository, maybe it isn't initialised.");
+                        bail!("Failed to open git repository, maybe it isn't initialised. Try re-initialising it with `fig cmd -- git init`")
                     }
                 }
             }
@@ -77,23 +54,23 @@ impl RepositoryBuilder {
         }
     }
     #[instrument(skip(self), fields(repository = % self.path().display()))]
-    pub fn init(self) -> Result<Repository, Error> {
+    pub fn init(self) -> Result<Repository> {
+        info!("Creating repository");
         match self {
             RepositoryBuilder::Unopened(path) => {
-                tracing::info!("Creating repository at '{}'", path.display());
-
                 if path.exists() {
-                    return Err(Error::AlreadyInitialised);
+                    warn!("Repository is already initialised");
+                    bail!("Repository already initialised");
                 }
 
                 crate::create_dir_all!(&path)
-                    .wrap(format!("Failed to create directory '{}'", path.display()))?;
+                    .wrap_err(format!("Failed to create directory '{}'", path.display()))?;
 
                 template::generate(&path)?;
 
                 let dot_gitignore = "namespace.fig";
                 let dot_gitignore_path = path.join(".gitignore");
-                std::fs::write(&dot_gitignore_path, dot_gitignore).wrap(format!(
+                std::fs::write(&dot_gitignore_path, dot_gitignore).wrap_err(format!(
                     "Failed to write to {}",
                     dot_gitignore_path.display()
                 ))?;
@@ -106,16 +83,24 @@ impl RepositoryBuilder {
                     path,
                 })
             }
-            RepositoryBuilder::Opened(_) => Err(Error::AlreadyInitialised),
+            RepositoryBuilder::Opened(_) => {
+                error!("Repository already initialised");
+                bail!("Repository already initialised");
+            }
         }
     }
 
-    pub fn clone(self, url: &str) -> Result<Repository, Error> {
+    #[instrument(skip(self))]
+    pub fn clone(self, url: &str) -> Result<Repository> {
+        info!("Cloning repository");
         match self {
             RepositoryBuilder::Unopened(path) => {
-                let git_repository = git2::Repository::clone_recurse(url, &path)?;
+                let git_repository = git2::Repository::clone_recurse(url, &path)
+                    .wrap_err("Failed to clone git repository")?;
+
                 // Fill in namespaces
-                template::generate(&path)?;
+                debug!("Generating default namespaces");
+                template::generate(&path).wrap_err("Failed to populate namespaces")?;
                 let repository = Repository {
                     git_repository,
                     path,
@@ -123,8 +108,10 @@ impl RepositoryBuilder {
 
                 Ok(repository)
             }
-            RepositoryBuilder::Opened(_) => Err(Error::AlreadyInitialised)
-                .wrap("Cannot clone into repository that already exists"),
+            RepositoryBuilder::Opened(_) => {
+                error!("Repository already initialised");
+                bail!("Cannot clone into repository that already exists")
+            }
         }
     }
 }
@@ -135,27 +122,25 @@ pub struct Repository {
 }
 
 impl Repository {
-    #[must_use]
     pub fn into_builder(self) -> RepositoryBuilder {
         RepositoryBuilder::Opened(self)
     }
 
-    #[must_use]
     pub fn path(&self) -> &PathBuf {
         &self.path
     }
 
     /// Returns list of namespaces and the paths they point to.
-    pub fn namespaces(&self) -> Result<Vec<Namespace>, Error> {
+    pub fn namespaces(&self) -> Result<Vec<Namespace>> {
         let mut out = vec![];
-        for entry in self.path.read_dir().wrap("Failed to read directory")? {
+        for entry in self.path.read_dir().wrap_err("Failed to read directory")? {
             let entry = entry?;
             if entry.file_type()?.is_dir() && entry.path().join("namespace.fig").exists() {
                 let text = std::fs::read_to_string(entry.path().join("namespace.fig"))?;
                 let targets = text
                     .lines()
                     .into_iter()
-                    .map(|l| l.trim())
+                    .map(str::trim)
                     .filter(|l| !l.is_empty())
                     .map(PathBuf::from)
                     .collect();
@@ -170,36 +155,40 @@ impl Repository {
     }
 
     /// List of all directories in repository that do not have a namespace.fig file.
-    pub fn floating_namespaces(&self) -> Result<Vec<String>, Error> {
+    pub fn floating_namespaces(&self) -> Result<Vec<String>> {
         let mut floating_namespaces = Vec::new();
         for entry in self.path().read_dir()?.flatten() {
             if entry.file_type()?.is_dir() && !entry.path().join("namespace.fig").exists() {
-                let file_name = entry.file_name();
-                // Ignore .git
-                if file_name == ".git" {
+                let file_name = entry.file_name().to_str().unwrap().to_string();
+                // Ignore hidden directories (e.g. ".git")
+                if file_name.starts_with(".") {
                     continue;
                 }
-                floating_namespaces.push(file_name.to_str().unwrap().to_string());
+                floating_namespaces.push(file_name);
             }
         }
         Ok(floating_namespaces)
     }
 
-    pub fn push(&self) -> Result<(), Error> {
+    pub fn push(&self) -> Result<()> {
+        debug!("Pushing repository to origin");
         self.git_repository
             .find_remote("origin")?
             .push(&["master"], None)?;
         Ok(())
     }
 
-    pub fn load_plugins(&self) -> Result<HashMap<String, PluginInfo>, Error> {
+    pub fn load_plugins(&self) -> Result<HashMap<String, PluginInfo>> {
+        info!("Loading plugins");
+
         let path = self.path().join("plugins.toml");
         if !path.exists() {
             return Ok(HashMap::default());
         }
 
-        let text = std::fs::read_to_string(&path)?;
-        let map = toml::from_str(&text)?;
+        let text =
+            std::fs::read_to_string(&path).wrap_err("Failed to read plugin configuration")?;
+        let map = toml::from_str(&text).wrap_err("Failed to parse plugin configuration")?;
 
         Ok(map)
     }

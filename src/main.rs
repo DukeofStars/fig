@@ -64,16 +64,19 @@ fn main() -> Result<()> {
         .open(log_path)
         .context("Failed to open log file")?;
 
+    let level = match cli.verbose {
+        0 => Level::WARN,
+        // -v
+        1 => Level::DEBUG,
+        // -vv
+        2.. => Level::TRACE,
+    };
     let subscriber = Registry::default()
         .with(fmt::Layer::default().with_writer(file.with_max_level(Level::TRACE)))
         .with(
-            fmt::Layer::default().with_writer(std::io::stderr.with_max_level(match cli.verbose {
-                0 => Level::WARN,
-                // -v
-                1 => Level::DEBUG,
-                // -vv
-                2.. => Level::TRACE,
-            })),
+            fmt::Layer::default()
+                .with_writer(std::io::stderr.with_max_level(level))
+                .compact(),
         );
     tracing::subscriber::set_global_default(subscriber)
         .context("Unable to set global subscriber")?;

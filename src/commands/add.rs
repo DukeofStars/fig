@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use color_eyre::Result;
 use color_eyre::{eyre::eyre, Section};
+use tracing::{debug, warn};
 
 use crate::{namespace::determine_namespace, repository::RepositoryBuilder};
 
@@ -19,6 +20,8 @@ pub fn add(repo_builder: RepositoryBuilder, options: &AddOptions) -> Result<()> 
     let mut io_errors: Vec<std::io::Error> = vec![];
     let mut prefix_errors: Vec<std::path::StripPrefixError> = vec![];
     for file in &options.files {
+        debug!("Adding file '{}'", file.display());
+
         let file = file.canonicalize();
         if let Err(e) = file {
             io_errors.push(e);
@@ -37,6 +40,7 @@ pub fn add(repo_builder: RepositoryBuilder, options: &AddOptions) -> Result<()> 
             ) {
                 Ok(path) => path,
                 Err(e) => {
+                    warn!("Failed to strip prefix from file");
                     prefix_errors.push(e);
                     continue;
                 }

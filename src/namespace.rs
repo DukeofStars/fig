@@ -1,23 +1,14 @@
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
+use color_eyre::{
+    eyre::{bail, Context},
+    Result,
+};
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
-use tracing::instrument;
+use tracing::{error, instrument, trace};
 
 use crate::repository::Repository;
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-    #[error(transparent)]
-    StripPrefixError(#[from] std::path::StripPrefixError),
-    #[error("'{}' is not in any known namespace", .0.display())]
-    HasNoNamespace(PathBuf),
-    #[error(transparent)]
-    Repository(#[from] crate::repository::Error),
-}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Namespace {
@@ -28,15 +19,15 @@ pub struct Namespace {
 }
 
 impl Namespace {
-    pub fn files(&self) -> Result<Vec<PathBuf>, Error> {
+    pub fn files(&self) -> Result<Vec<PathBuf>> {
         let mut files = vec![];
         self.recurse_dir(&self.location, &mut files, 50)?;
         Ok(files)
     }
 
-    fn recurse_dir(&self, dir: &Path, files: &mut Vec<PathBuf>, depth: u8) -> Result<(), Error> {
+    fn recurse_dir(&self, dir: &Path, files: &mut Vec<PathBuf>, depth: u8) -> Result<()> {
         assert!(depth != 0, "Overflowed depth");
-        for entry in dir.read_dir()? {
+        for entry in dir.read_dir().wrap_err("Failed to read directory")? {
             let entry = entry?;
             let path = entry.path();
             if path.is_file() {
@@ -60,11 +51,11 @@ impl Namespace {
 pub fn determine_namespace(
     repository: &Repository,
     path: impl Into<PathBuf> + Debug,
-) -> Result<Namespace, Error> {
+) -> Result<Namespace> {
     let original_path: PathBuf = path.into();
     let mut path = original_path.as_path();
 
-    tracing::debug!("Determining namespace of '{}'", path.display());
+    trace!("Determining namespace of '{}'", path.display());
 
     while let Some(parent) = path.parent() {
         path = parent;
@@ -76,6 +67,6 @@ pub fn determine_namespace(
         }
     }
 
-    tracing::error!("'{}' has no namespace", original_path.display());
-    Err(Error::HasNoNamespace(original_path))
+    error!("'{}' has no namespace", original_path.display());
+    bail!("'{}' has no namespace", original_path.display())
 }

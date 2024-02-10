@@ -4,8 +4,7 @@ use clap::Args;
 use color_eyre::{eyre::Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::repository::Error;
-use crate::{namespace::Namespace, repository, repository::RepositoryBuilder};
+use crate::{namespace::Namespace, repository::RepositoryBuilder};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Info {
@@ -17,7 +16,7 @@ pub struct Info {
 }
 
 impl Info {
-    pub fn gather(repo_builder: RepositoryBuilder) -> Result<Self, repository::Error> {
+    pub fn gather(repo_builder: RepositoryBuilder) -> Result<Self> {
         let repository_path = repo_builder.path().clone();
         let log_path = crate::project_dirs().data_local_dir().join("fig-log.txt");
         match repo_builder.open() {
@@ -28,14 +27,13 @@ impl Info {
                 repository_path,
                 log_path,
             }),
-            Err(Error::NotInitialised) => Ok(Self {
+            Err(_) => Ok(Self {
                 initialised: false,
                 namespaces: vec![],
                 floating_namespaces: vec![],
                 repository_path,
                 log_path,
             }),
-            Err(e) => Err(e),
         }
     }
 }

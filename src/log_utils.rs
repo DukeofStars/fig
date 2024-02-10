@@ -7,7 +7,7 @@ macro_rules! create_dir_all {
                 e
             })
             .map(|a| {
-                tracing::debug!("Created directory '{path}'", path = $path.display());
+                tracing::trace!("Created directory '{path}'", path = $path.display());
                 a
             })
     }};

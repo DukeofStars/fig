@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 use color_eyre::{eyre::Context, Result};
+use tracing::debug;
 
 use crate::{
     plugin::{self, PluginTriggerLookup},
@@ -29,6 +30,12 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
         get_files(&namespace.location, &namespace.location, &mut files, 20)?;
         for file in files {
             for target in &namespace.targets {
+                debug!(
+                    "Deploying file '{}' to '{}'",
+                    file.display(),
+                    target.display()
+                );
+
                 let mut dest = target.join(&file);
                 let mut src = namespace.location.join(&file);
 
@@ -39,6 +46,7 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
                     }
                 }
 
+                // Run the file contents through plugins.
                 let mut contents = std::fs::read(&src)?;
                 while let Some(plugin) = src
                     .extension()
@@ -46,16 +54,17 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
                 {
                     contents = plugin::call_on_file(&plugin.cmd, contents)?;
 
+                    // Trim back extension.
                     dest = dest.with_extension("");
                     src = src.with_extension("");
                 }
 
-                std::fs::write(&dest, contents)?;
-                // crate::copy_file!(&src, &dest).context(format!(
-                //     "Failed to copy '{}' to '{}'",
-                //     src.display(),
-                //     dest.display()
-                // ))?;
+                // std::fs::write(&dest, contents)?;
+                crate::copy_file!(&src, &dest).context(format!(
+                    "Failed to copy '{}' to '{}'",
+                    src.display(),
+                    dest.display()
+                ))?;
             }
         }
     }

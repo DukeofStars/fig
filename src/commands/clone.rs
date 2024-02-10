@@ -1,5 +1,6 @@
 use clap::Args;
 use color_eyre::Result;
+use tracing::info;
 use url::Url;
 
 use crate::repository::RepositoryBuilder;
@@ -12,6 +13,7 @@ pub struct CloneOptions {
 pub fn clone(repo_builder: RepositoryBuilder, options: &CloneOptions) -> Result<()> {
     // Perform initial clone.
     let repository = repo_builder.clone(options.url.as_str())?;
+    info!("Repository cloned successfully");
     println!("Repository cloned successfully");
 
     // Any user-made namespaces must be added manually.

@@ -26,11 +26,7 @@ pub fn list(repo_builder: RepositoryBuilder, options: &ListOptions) -> Result<()
         for ns in repository.namespaces()? {
             let ns_files = ns.files()?;
             let path = ns.location.canonicalize()?;
-            let name = path
-                .file_name()
-                .unwrap()
-                .to_str()
-                .ok_or(eyre!("Failed to convert OsStr to &str"))?;
+            let name = path.file_name().unwrap().to_str().unwrap();
             files.insert(name.to_string(), ns_files);
         }
 
