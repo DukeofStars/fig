@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 use color_eyre::{eyre::Context, Result};
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::{
     plugin::{self, PluginTriggerLookup},
@@ -68,6 +68,8 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
             }
         }
     }
+
+    info!("Deploying files successful");
 
     Ok(())
 }
