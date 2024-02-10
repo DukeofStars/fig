@@ -32,7 +32,7 @@ macro_rules! remove_dir_all {
                 e
             })
             .map(|a| {
-                tracing::debug!("Removed directory '{path}'", path = $path.display());
+                tracing::trace!("Removed directory '{path}'", path = $path.display());
                 a
             })
     }};
@@ -51,7 +51,7 @@ macro_rules! copy_file {
                 e
             })
             .map(|a| {
-                tracing::debug!(
+                tracing::trace!(
                     "Copied path '{from}' to '{parent}'",
                     from = $from.display(),
                     parent = $to.parent().unwrap_or_else(|| $to).display()
@@ -118,7 +118,7 @@ macro_rules! copy_dir {
             }
         }
 
-        tracing::info!(
+        tracing::trace!(
             "Copied {} files from '{}' to '{}'",
             copied_files.len(),
             $from.display(),
