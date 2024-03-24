@@ -56,6 +56,7 @@ pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 
     Ok(buf)
 }
+
 pub fn call_on_repository(cmd: &String, repo_path: &PathBuf) -> std::io::Result<()> {
     let mut command = std::process::Command::new(cmd);
 
@@ -95,7 +96,7 @@ impl<'a> PluginTriggerLookup<'a> {
                                 ext: ext.clone(),
                                 plugin1: old.cmd.clone(),
                                 plugin2: plugin_info.cmd.clone(),
-                            })
+                            });
                         }
                         None => {}
                     },
