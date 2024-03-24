@@ -86,10 +86,6 @@ fn get_files(
 ) -> Result<()> {
     if depth == 0 {
         return Ok(());
-    } else if let Some(extension) = entry.extension() {
-        if extension == "fig" {
-            return Ok(());
-        }
     } else if entry.is_dir() {
         for entry in entry.read_dir()? {
             let entry = entry?.path();
@@ -97,6 +93,10 @@ fn get_files(
         }
 
         return Ok(());
+    } else if let Some(extension) = entry.extension() {
+        if extension == "fig" {
+            return Ok(());
+        }
     }
     // Strip fig dir
     let path = entry
