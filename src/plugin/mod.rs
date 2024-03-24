@@ -97,6 +97,7 @@ pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 
     stdin.write_all(&bytes)?;
 
+    // TODO: Handle errors in the plugin
     let status = child.wait()?;
     if !status.success() {
         return Err(Error::PluginError {
