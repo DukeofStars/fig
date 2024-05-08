@@ -19,7 +19,13 @@
         pkgs = import nixpkgs { inherit system overlays; };
       in
       {
-        devShell = pkgs.mkShell { buildInputs = with pkgs; [ rust-bin.stable.latest.default ]; };
+        devShell = pkgs.mkShell {
+          buildInputs = with pkgs; [
+            rust-bin.stable.latest.default
+            pkg-config
+            openssl
+          ];
+        };
         formatter = pkgs.nixfmt-rfc-style;
       }
     );
