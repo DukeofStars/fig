@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use color_eyre::{
@@ -7,7 +6,11 @@ use color_eyre::{
 };
 use tracing::{debug, error, info, instrument, warn};
 
-use crate::{namespace::Namespace, plugin::PluginInfo, template};
+use crate::{
+    namespace::Namespace,
+    plugin::{self, PluginTriggerLookup},
+    template,
+};
 
 pub enum RepositoryBuilder {
     Unopened(PathBuf),
@@ -171,25 +174,19 @@ impl Repository {
     }
 
     pub fn push(&self) -> Result<()> {
-        debug!("Pushing repository to origin");
+        info!("Pushing repository to origin");
         self.git_repository
             .find_remote("origin")?
             .push(&["master"], None)?;
         Ok(())
     }
 
-    pub fn load_plugins(&self) -> Result<HashMap<String, PluginInfo>> {
-        info!("Loading plugins");
-
+    pub fn load_plugins(&self) -> Result<PluginTriggerLookup> {
         let path = self.path().join("plugins.toml");
         if !path.exists() {
-            return Ok(HashMap::default());
+            return Ok(PluginTriggerLookup::default());
         }
 
-        let text =
-            std::fs::read_to_string(&path).wrap_err("Failed to read plugin configuration")?;
-        let map = toml::from_str(&text).wrap_err("Failed to parse plugin configuration")?;
-
-        Ok(map)
+        plugin::load_plugins(path).wrap_err("Failed to load plugins")
     }
 }

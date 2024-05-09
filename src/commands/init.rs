@@ -17,7 +17,11 @@ pub struct InitOptions {
     dir: Option<PathBuf>,
 }
 
-pub fn init(repo_builder: RepositoryBuilder, options: &InitOptions) -> Result<()> {
+pub fn init(mut repo_builder: RepositoryBuilder, options: &InitOptions) -> Result<()> {
+    if let Some(dir) = &options.dir {
+        repo_builder = RepositoryBuilder::new(dir.clone());
+    }
+
     if options.force && repo_builder.path().exists() {
         warn!("Overriding already initialised repository");
         std::fs::remove_dir_all(repo_builder.path()).context("Failed to remove directory")?;

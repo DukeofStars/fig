@@ -1,12 +1,12 @@
+use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     io::{Read, Write},
     path::PathBuf,
     process::Stdio,
 };
-
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use tracing::{debug, info};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -15,6 +15,15 @@ pub enum Error {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 }
+#[derive(Debug, Error)]
+pub enum LoadPluginConfigError {
+    #[error("Failed to read plugin configuration file.")]
+    ReadError(#[from] std::io::Error),
+    #[error("Failed to parse plugin configuration file.")]
+    ParseError(#[from] toml::de::Error),
+    #[error(transparent)]
+    FromMapError(#[from] FromMapError),
+}
 
 #[derive(Debug, Default)]
 pub struct PluginTriggerLookup<'a> {
@@ -22,8 +31,59 @@ pub struct PluginTriggerLookup<'a> {
     pub file: HashMap<String, &'a PluginInfo>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct PluginSerde {
+    cmd: String,
+    triggers: Vec<String>,
+}
+impl Into<PluginInfo> for PluginSerde {
+    fn into(self) -> PluginInfo {
+        let triggers = self
+            .triggers
+            .into_iter()
+            .map(|trigger| match trigger.as_str() {
+                "repo" => Trigger::Repository,
+                ext if ext.starts_with(".") => {
+                    Trigger::File(ext.strip_prefix('.').unwrap().to_string())
+                }
+                _ => {
+                    todo!()
+                }
+            })
+            .collect();
+        PluginInfo {
+            cmd: self.cmd,
+            triggers,
+        }
+    }
+}
+
+pub fn load_plugins(path: PathBuf) -> Result<PluginTriggerLookup<'static>, LoadPluginConfigError> {
+    use LoadPluginConfigError::*;
+
+    info!("Loading plugins");
+
+    if !path.exists() {
+        return Ok(PluginTriggerLookup::default());
+    }
+
+    let text = std::fs::read_to_string(&path).map_err(ReadError)?;
+    let map: BTreeMap<String, PluginSerde> = toml::from_str(&text).map_err(ParseError)?;
+
+    let map = map
+        .into_iter()
+        .map(|(name, plugin_info)| (name, plugin_info.into()))
+        .collect::<HashMap<String, PluginInfo>>();
+    let map = Box::new(map);
+    let map = Box::leak(map);
+
+    debug!(plugins = ?map, "Loaded plugins");
+
+    Ok(PluginTriggerLookup::from_map(map)?)
+}
+
 pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
-    tracing::debug!("Running command '{}'", cmd);
+    debug!("Calling plugin '{}'", cmd);
 
     let mut command = std::process::Command::new(cmd);
 
@@ -37,7 +97,6 @@ pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 
     stdin.write_all(&bytes)?;
 
-    // TODO: Handle errors in the plugin
     let status = child.wait()?;
     if !status.success() {
         return Err(Error::PluginError {
@@ -58,6 +117,8 @@ pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
 }
 
 pub fn call_on_repository(cmd: &String, repo_path: &PathBuf) -> std::io::Result<()> {
+    debug!("Calling plugin {cmd} on repository");
+
     let mut command = std::process::Command::new(cmd);
 
     command.arg(repo_path);

@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, path::PathBuf};
 
 use clap::{command, Parser, Subcommand};
 use color_eyre::{eyre::Context, Result};
@@ -20,6 +20,8 @@ struct Cli {
     verbose: u8,
     #[command(subcommand)]
     command: Command,
+    #[arg(short, long)]
+    dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -83,7 +85,10 @@ fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .context("Unable to set global subscriber")?;
 
-    let repo_builder = RepositoryBuilder::new(project_dirs().data_dir().to_path_buf());
+    let repo_builder = RepositoryBuilder::new(
+        cli.dir
+            .unwrap_or_else(|| project_dirs().data_dir().to_path_buf()),
+    );
 
     match &cli.command {
         Command::Add(options) => {

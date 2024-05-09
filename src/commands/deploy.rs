@@ -2,10 +2,10 @@ use std::path::{Path, PathBuf};
 
 use clap::Args;
 use color_eyre::{eyre::Context, Result};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
-    plugin::{self, PluginTriggerLookup},
+    plugin::{self},
     repository::RepositoryBuilder,
 };
 
@@ -20,11 +20,10 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
     let namespaces = repository.namespaces()?;
 
     let plugin_map = repository.load_plugins()?;
-    let plugin_trigger_lookup = PluginTriggerLookup::from_map(&plugin_map)?;
 
     info!("Deploying files");
 
-    for plugin in plugin_trigger_lookup.repository {
+    for plugin in plugin_map.repository {
         plugin::call_on_repository(&plugin.cmd, repository.path())
             .context("Failed to call plugin")?;
     }
@@ -32,7 +31,7 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
     for namespace in &namespaces {
         let mut files = vec![];
         get_files(&namespace.location, &namespace.location, &mut files, 20)?;
-        for file in files {
+        'floop: for file in files {
             for target in &namespace.targets {
                 debug!(
                     "Deploying file '{}' to '{}'",
@@ -54,21 +53,28 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
                 let mut contents = std::fs::read(&src)?;
                 while let Some(plugin) = src
                     .extension()
-                    .and_then(|ext| plugin_trigger_lookup.file.get(ext.to_str().unwrap()))
+                    .and_then(|ext| plugin_map.file.get(ext.to_str().unwrap()))
                 {
-                    contents = plugin::call_on_file(&plugin.cmd, contents)?;
+                    contents = match plugin::call_on_file(&plugin.cmd, contents) {
+                        Ok(contents) => contents,
+                        Err(err) => {
+                            error!(%err, "Calling plugin '{}' failed", &plugin.cmd);
+                            continue 'floop;
+                        }
+                    };
 
                     // Trim back extension.
                     dest = dest.with_extension("");
                     src = src.with_extension("");
                 }
 
-                // std::fs::write(&dest, contents)?;
-                crate::copy_file!(&src, &dest).context(format!(
-                    "Failed to copy '{}' to '{}'",
-                    src.display(),
-                    dest.display()
-                ))?;
+                std::fs::write(&dest, contents)
+                    .wrap_err(format!("Failed to write to '{}'", dest.display()))?;
+                // crate::copy_file!(&src, &dest).context(format!(
+                //     "Failed to copy '{}' to '{}'",
+                //     src.display(),
+                //     dest.display()
+                // ))?;
             }
         }
     }
