@@ -18,6 +18,8 @@ use crate::commands::{
 struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
+    #[arg(long)]
+    disable_logging: bool,
     #[command(subcommand)]
     command: Command,
     #[arg(short, long, env = "FIG_REPO")]
@@ -55,35 +57,37 @@ fn main() -> Result<()> {
     let cli = Cli::parse_from(wild::args());
 
     // Initialise logging
-    let log_path = project_dirs().data_local_dir().join("fig-log.txt");
-    if !log_path.parent().unwrap().exists() {
-        std::fs::create_dir_all(log_path.parent().unwrap())
-            .context("Failed to create log directory")?;
-    }
-    let file = File::options()
-        .create(true)
-        .write(true)
-        .open(log_path)
-        .context("Failed to open log file")?;
+    if !cli.disable_logging {
+        let log_path = project_dirs().data_local_dir().join("fig-log.txt");
+        if !log_path.parent().unwrap().exists() {
+            std::fs::create_dir_all(log_path.parent().unwrap())
+                .context("Failed to create log directory")?;
+        }
+        let file = File::options()
+            .create(true)
+            .write(true)
+            .open(log_path)
+            .context("Failed to open log file")?;
 
-    let level = match cli.verbose {
-        0 => Level::WARN,
-        // -v
-        1 => Level::INFO,
-        // -vv
-        2 => Level::DEBUG,
-        // -vvv
-        3.. => Level::TRACE,
-    };
-    let subscriber = Registry::default()
-        .with(fmt::Layer::default().with_writer(file.with_max_level(Level::TRACE)))
-        .with(
-            fmt::Layer::default()
-                .with_writer(std::io::stderr.with_max_level(level))
-                .compact(),
-        );
-    tracing::subscriber::set_global_default(subscriber)
-        .context("Unable to set global subscriber")?;
+        let level = match cli.verbose {
+            0 => Level::WARN,
+            // -v
+            1 => Level::INFO,
+            // -vv
+            2 => Level::DEBUG,
+            // -vvv
+            3.. => Level::TRACE,
+        };
+        let subscriber = Registry::default()
+            .with(fmt::Layer::default().with_writer(file.with_max_level(Level::TRACE)))
+            .with(
+                fmt::Layer::default()
+                    .with_writer(std::io::stderr.with_max_level(level))
+                    .compact(),
+            );
+        tracing::subscriber::set_global_default(subscriber)
+            .context("Unable to set global subscriber")?;
+    }
 
     let repo_builder = RepositoryBuilder::new(
         cli.dir
