@@ -69,6 +69,9 @@ pub fn info(repo_builder: RepositoryBuilder, options: &InfoOptions) -> Result<()
             "{}: {}",
             file_name,
             match namespace.targets.len() {
+                0 => {
+                    "<no targets>".to_string()
+                }
                 1 => {
                     namespace.targets.get(0).unwrap().display().to_string()
                 }
@@ -80,7 +83,6 @@ pub fn info(repo_builder: RepositoryBuilder, options: &InfoOptions) -> Result<()
                         .collect::<Vec<String>>()
                         .join(&format!("{}\n", " ".repeat(file_name.len() + 2)))
                 }
-                _ => panic!(),
             }
         );
     }
