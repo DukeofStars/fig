@@ -1,7 +1,7 @@
 [package]
 edition = "2021"
 name = "fig"
-version = "0.5.3"
+version = "0.5.4"
 authors = ["Tristan Fox"]
 description = "A modern, powerful, and truly cross-platform configuration manager"
 
