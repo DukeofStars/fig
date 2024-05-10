@@ -2,7 +2,7 @@ use std::{fs::File, path::PathBuf};
 
 use clap::{command, Parser, Subcommand};
 use color_eyre::{eyre::Context, Result};
-use tracing::Level;
+use tracing::{level_filters::LevelFilter, Level};
 use tracing_subscriber::{fmt, fmt::writer::MakeWriterExt, layer::SubscriberExt, Registry};
 
 use fig::repository::RepositoryBuilder;
@@ -70,21 +70,21 @@ fn main() -> Result<()> {
             .context("Failed to open log file")?;
 
         let level = match cli.verbose {
-            0 => Level::WARN,
+            0 => LevelFilter::OFF,
             // -v
-            1 => Level::INFO,
+            1 => LevelFilter::INFO,
             // -vv
-            2 => Level::DEBUG,
+            2 => LevelFilter::DEBUG,
             // -vvv
-            3.. => Level::TRACE,
+            3.. => LevelFilter::TRACE,
         };
         let subscriber = Registry::default()
             .with(fmt::Layer::default().with_writer(file.with_max_level(Level::TRACE)))
-            .with(
+            .with(level.into_level().map(|level| {
                 fmt::Layer::default()
                     .with_writer(std::io::stderr.with_max_level(level))
-                    .compact(),
-            );
+                    .without_time()
+            }));
         tracing::subscriber::set_global_default(subscriber)
             .context("Unable to set global subscriber")?;
     }
