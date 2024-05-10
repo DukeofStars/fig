@@ -13,14 +13,14 @@ use crate::commands::{
     info::InfoOptions, init::InitOptions, list::ListOptions, namespace::NamespaceOptions,
 };
 
-/// A powerful and cross-platform configuration manager.
 #[derive(Debug, Parser)]
+#[command(version, about)]
 struct Cli {
     #[arg(short, long, action = clap::ArgAction::Count)]
     verbose: u8,
     #[command(subcommand)]
     command: Command,
-    #[arg(short, long)]
+    #[arg(short, long, env = "FIG_REPO")]
     dir: Option<PathBuf>,
 }
 
