@@ -14,7 +14,6 @@ pub fn clone(repo_builder: RepositoryBuilder, options: &CloneOptions) -> Result<
     // Perform initial clone.
     let repository = repo_builder.clone(options.url.as_str())?;
     info!("Repository cloned successfully");
-    println!("Repository cloned successfully");
 
     // Any user-made namespaces must be added manually.
     let floating_namespaces = repository.floating_namespaces()?;
