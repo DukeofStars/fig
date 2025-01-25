@@ -146,6 +146,7 @@ impl Repository {
                     .map(str::trim)
                     .filter(|l| !l.is_empty())
                     .map(PathBuf::from)
+                    .filter_map(|path| path.canonicalize().ok())
                     .collect();
                 let namespace = Namespace {
                     targets,

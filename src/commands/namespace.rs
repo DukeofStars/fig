@@ -66,6 +66,7 @@ pub fn namespace_cli(repo_builder: RepositoryBuilder, options: &NamespaceOptions
                                         " ".repeat(14 /* Align the targets with each other */)
                                     ))
                             }
+                            // TODO: Namespaces with no listed targets will completely break the program and it is not at all reported to the user.
                             _ => panic!(),
                         }
                     );

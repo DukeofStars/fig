@@ -60,8 +60,12 @@ pub fn determine_namespace(
     while let Some(parent) = path.parent() {
         path = parent;
         for ns in repository.namespaces()? {
-            // Only allow the file to be added to the namespace if it is in all of the targets.
-            if ns.targets.iter().all(|target| target == parent) {
+            // Only allow the file to be added to the namespace if it is in any of the targets.
+            if ns
+                .targets
+                .iter()
+                .any(|target| target.canonicalize().ok() == parent.canonicalize().ok())
+            {
                 return Ok(ns);
             }
         }
