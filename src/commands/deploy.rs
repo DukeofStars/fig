@@ -70,11 +70,6 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
 
                 std::fs::write(&dest, contents)
                     .wrap_err(format!("Failed to write to '{}'", dest.display()))?;
-                // crate::copy_file!(&src, &dest).context(format!(
-                //     "Failed to copy '{}' to '{}'",
-                //     src.display(),
-                //     dest.display()
-                // ))?;
             }
         }
     }
