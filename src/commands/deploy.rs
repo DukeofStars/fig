@@ -24,13 +24,16 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
     info!("Deploying files");
 
     for plugin in plugin_map.repository {
-        plugin::call_on_repository(&plugin.cmd, repository.path())
-            .context("Failed to call plugin")?;
+        plugin::call_on_repository(&plugin, repository.path()).context("Failed to call plugin")?;
     }
+
+    let mut success_count = 0;
+    let mut total_files = 0;
 
     for namespace in &namespaces {
         let mut files = vec![];
         get_files(&namespace.location, &namespace.location, &mut files, 20)?;
+        total_files += files.len();
         'floop: for file in files {
             for target in &namespace.targets {
                 debug!(
@@ -55,7 +58,7 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
                     .extension()
                     .and_then(|ext| plugin_map.file.get(ext.to_str().unwrap()))
                 {
-                    contents = match plugin::call_on_file(&plugin.cmd, contents) {
+                    contents = match plugin::call_on_file(&plugin, contents) {
                         Ok(contents) => contents,
                         Err(err) => {
                             error!(%err, "Calling plugin '{}' failed", &plugin.cmd);
@@ -71,10 +74,11 @@ pub fn deploy(repo_builder: RepositoryBuilder, _options: &DeployOptions) -> Resu
                 std::fs::write(&dest, contents)
                     .wrap_err(format!("Failed to write to '{}'", dest.display()))?;
             }
+            success_count += 1;
         }
     }
 
-    info!("Deploying files successful");
+    info!("Successfully deployed {success_count}/{total_files} files");
 
     Ok(())
 }

@@ -34,6 +34,7 @@ pub struct PluginTriggerLookup<'a> {
 #[derive(Debug, Deserialize, Serialize)]
 struct PluginSerde {
     cmd: String,
+    args: Vec<String>,
     triggers: Vec<String>,
 }
 impl Into<PluginInfo> for PluginSerde {
@@ -53,6 +54,7 @@ impl Into<PluginInfo> for PluginSerde {
             .collect();
         PluginInfo {
             cmd: self.cmd,
+            args: self.args,
             triggers,
         }
     }
@@ -82,13 +84,14 @@ pub fn load_plugins(path: PathBuf) -> Result<PluginTriggerLookup<'static>, LoadP
     Ok(PluginTriggerLookup::from_map(map)?)
 }
 
-pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
-    debug!("Calling plugin '{}'", cmd);
+pub fn call_on_file(plugin: &PluginInfo, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
+    debug!("Calling plugin '{}'", plugin.cmd);
 
-    let mut command = std::process::Command::new(cmd);
+    let mut command = std::process::Command::new(&plugin.cmd);
 
     command.stdin(Stdio::piped()).stdout(Stdio::piped());
 
+    command.args(&plugin.args);
     command.env("FIG_TRIGGER", "FILE");
 
     let mut child = command.spawn()?;
@@ -101,7 +104,7 @@ pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     let status = child.wait()?;
     if !status.success() {
         return Err(Error::PluginError {
-            plugin_name: cmd.clone(),
+            plugin_name: plugin.cmd.clone(),
             code: status.code().take().unwrap_or(-1),
         });
     }
@@ -112,15 +115,15 @@ pub fn call_on_file(cmd: &String, bytes: Vec<u8>) -> Result<Vec<u8>, Error> {
     let output = std::str::from_utf8(&buf).unwrap_or("INVALID_UTF8");
     let output = format!("\"\n{}\"", truncate_string(output, 5));
 
-    tracing::debug!(%output, "Command '{}' ran successfully", cmd);
+    tracing::debug!(%output, "Command '{}' ran successfully", plugin.cmd);
 
     Ok(buf)
 }
 
-pub fn call_on_repository(cmd: &String, repo_path: &PathBuf) -> std::io::Result<()> {
-    debug!("Calling plugin {cmd} on repository");
+pub fn call_on_repository(plugin: &PluginInfo, repo_path: &PathBuf) -> std::io::Result<()> {
+    debug!("Calling plugin {} on repository", plugin.cmd);
 
-    let mut command = std::process::Command::new(cmd);
+    let mut command = std::process::Command::new(&plugin.cmd);
 
     command.arg(repo_path);
     command.env("FIG_TRIGGER", "REPOSITORY");
@@ -173,7 +176,8 @@ impl<'a> PluginTriggerLookup<'a> {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PluginInfo {
     pub cmd: String,
-    triggers: Vec<Trigger>,
+    pub args: Vec<String>,
+    pub triggers: Vec<Trigger>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
